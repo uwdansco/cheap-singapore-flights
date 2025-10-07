@@ -6,10 +6,15 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import AdminDashboard from "./pages/AdminDashboard";
 import Verify from "./pages/Verify";
 import Unsubscribe from "./pages/Unsubscribe";
 import NotFound from "./pages/NotFound";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import DashboardOverview from "./pages/admin/DashboardOverview";
+import SubscribersPage from "./pages/admin/SubscribersPage";
+import DestinationsPage from "./pages/admin/DestinationsPage";
+import DealsPage from "./pages/admin/DealsPage";
+import SendEmailPage from "./pages/admin/SendEmailPage";
 
 const queryClient = new QueryClient();
 
@@ -23,9 +28,18 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/verify" element={<Verify />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<DashboardOverview />} />
+              <Route path="subscribers" element={<SubscribersPage />} />
+              <Route path="destinations" element={<DestinationsPage />} />
+              <Route path="deals" element={<DealsPage />} />
+              <Route path="send-email" element={<SendEmailPage />} />
+            </Route>
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
