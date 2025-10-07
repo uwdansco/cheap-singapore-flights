@@ -1,9 +1,11 @@
-import { Mail } from "lucide-react";
+import { Mail, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import heroPlane from "@/assets/hero-plane.jpg";
 
 const Hero = () => {
@@ -11,6 +13,7 @@ const Hero = () => {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user, isAdmin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +77,18 @@ const Hero = () => {
 
       {/* Content */}
       <div className="container relative z-10 px-4 py-20 mx-auto text-center">
+        {/* Admin Link */}
+        {user && isAdmin && (
+          <div className="absolute top-4 right-4">
+            <Button asChild variant="outline" className="bg-card/80 backdrop-blur-sm">
+              <Link to="/admin">
+                <LogIn className="h-4 w-4 mr-2" />
+                Admin Dashboard
+              </Link>
+            </Button>
+          </div>
+        )}
+        
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20">
