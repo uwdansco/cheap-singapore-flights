@@ -1,1 +1,10 @@
 project_id = "nlrdiznleytpuwvugloi"
+
+[functions.send-deal]
+verify_jwt = false
+
+[functions.send-verification]
+verify_jwt = false
+
+[functions.send-welcome]
+verify_jwt = false

@@ -27,26 +27,38 @@ const Hero = () => {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("subscribers")
-        .insert([{ email, name }]);
+      // Call edge function to handle subscription and send verification email
+      const { data, error } = await supabase.functions.invoke("send-verification", {
+        body: { email, name },
+      });
 
       if (error) {
-        if (error.code === "23505") {
+        if (error.message?.includes("already subscribed")) {
           toast({
             title: "Already subscribed!",
-            description: "This email is already on our list. Check your inbox for deals!",
+            description: "This email is already verified. Check your inbox for deals!",
           });
         } else {
           throw error;
         }
       } else {
         toast({
-          title: "Welcome aboard! ✈️",
-          description: "You're now subscribed to exclusive Atlanta flight deals!",
+          title: "Check your email! 📧",
+          description: "We've sent you a verification link. Click it to confirm your subscription.",
         });
         setEmail("");
         setName("");
