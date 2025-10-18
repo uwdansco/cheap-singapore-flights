@@ -10,8 +10,8 @@ import {
   Preview,
   Section,
   Text,
-} from 'npm:@react-email/components@0.0.22';
-import * as React from 'npm:react@18.3.1';
+} from 'https://esm.sh/@react-email/components@0.0.22';
+import * as React from 'https://esm.sh/react@18.3.1';
 
 interface DealAlertEmailProps {
   destination: {
@@ -48,7 +48,7 @@ export const DealAlertEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>🎯 Deal Alert: Atlanta to {destination.city_name} from ${price}</Preview>
+      <Preview>🎯 Deal Alert: Atlanta to {destination.city_name} from ${price.toString()}</Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header */}
