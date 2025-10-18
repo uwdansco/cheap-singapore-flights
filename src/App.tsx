@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -44,11 +45,12 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <OfflineBanner />
-          <InstallPrompt />
-          <BrowserRouter>
+          <ErrorBoundary>
+            <Toaster />
+            <Sonner />
+            <OfflineBanner />
+            <InstallPrompt />
+            <BrowserRouter>
             <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
@@ -106,6 +108,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           </BrowserRouter>
+          </ErrorBoundary>
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
