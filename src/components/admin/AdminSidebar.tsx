@@ -24,6 +24,7 @@ const menuItems = [
   { title: "Deals", url: "/admin/deals", icon: Plane },
   { title: "Send Email", url: "/admin/send-email", icon: Mail },
   { title: "Price Monitoring", url: "/admin/monitoring", icon: Activity },
+  { title: "Audit Log", url: "/admin/audit", icon: Mail },
 ];
 
 export function AdminSidebar() {
