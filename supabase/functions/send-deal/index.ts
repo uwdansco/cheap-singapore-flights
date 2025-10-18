@@ -1,7 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
+import React from 'npm:react@18.3.1';
+import { renderAsync } from 'npm:@react-email/components@0.0.22';
+import { DealAlertEmail } from '../_shared/email-templates/deal-alert-email.tsx';
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +58,14 @@ const handler = async (req: Request): Promise<Response> => {
     // Get deal details with destination info
     const { data: deal, error: dealError } = await supabase
       .from("deals")
-      .select("*, destinations(city_name, country)")
+      .select(`
+        *,
+        destinations (
+          city_name,
+          country,
+          airport_code
+        )
+      `)
       .eq("id", dealId)
       .single();
 
@@ -81,89 +92,41 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("No active subscribers found");
     }
 
-    // Prepare email content
-    const subject = `🌴 Amazing Deal: ${deal.destinations.city_name}, ${deal.destinations.country} - $${deal.price}`;
-    const outboundDate = new Date(deal.outbound_date).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-    const returnDate = new Date(deal.return_date).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
+    const siteUrl = Deno.env.get("SITE_URL") || "https://cheapatlantaflights.com";
+    const subject = `🎯 Deal Alert: Atlanta to ${deal.destinations.city_name} from $${deal.price}`;
+    
+    let sentCount = 0;
 
     // Send emails to all subscribers
-    const emailPromises = subscribers.map(async (subscriber) => {
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #2b9fdb 0%, #4db8f0 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-              .content { background: white; padding: 30px; border: 1px solid #e5e7eb; }
-              .deal-box { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; }
-              .price { font-size: 36px; font-weight: bold; color: #ea580c; }
-              .button { display: inline-block; background: #ea580c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
-              .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>✈️ Incredible Travel Deal Alert!</h1>
-              </div>
-              <div class="content">
-                <p>Hi ${subscriber.name || "there"},</p>
-                <p>We've found an amazing deal that we thought you'd love!</p>
-                
-                <div class="deal-box">
-                  <h2>${deal.destinations.city_name}, ${deal.destinations.country}</h2>
-                  <div class="price">$${deal.price}</div>
-                  <p><strong>Outbound:</strong> ${outboundDate}</p>
-                  <p><strong>Return:</strong> ${returnDate}</p>
-                </div>
+    for (const subscriber of subscribers) {
+      try {
+        const unsubscribeUrl = `${siteUrl}/unsubscribe`;
 
-                <p>This is a limited-time offer, so don't wait too long!</p>
-                
-                <a href="${deal.booking_link}" class="button">Book Now</a>
+        // Render React Email template
+        const emailHtml = await renderAsync(
+          React.createElement(DealAlertEmail, {
+            destination: deal.destinations,
+            price: deal.price,
+            currency: deal.currency || 'USD',
+            outbound_date: deal.outbound_date,
+            return_date: deal.return_date,
+            booking_link: deal.booking_link,
+            unsubscribeUrl,
+          })
+        );
 
-                <p>Happy travels!</p>
-              </div>
-              <div class="footer">
-                <p>You're receiving this because you subscribed to our travel deals newsletter.</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `;
-
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: "Travel Deals <onboarding@resend.dev>",
+        await resend.emails.send({
+          from: "Cheap Atlanta Flights <deals@cheapatlantaflights.com>",
           to: [subscriber.email],
           subject,
-          html,
-        }),
-      });
+          html: emailHtml,
+        });
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to send email: ${error}`);
+        sentCount++;
+      } catch (emailError) {
+        console.error(`Failed to send to ${subscriber.email}:`, emailError);
       }
-
-      return response.json();
-    });
-
-    await Promise.all(emailPromises);
+    }
 
     // Update deal status
     await supabase
@@ -174,12 +137,12 @@ const handler = async (req: Request): Promise<Response> => {
     // Record email sent
     await supabase.from("sent_emails").insert({
       deal_id: dealId,
-      subscriber_count: subscribers.length,
+      subscriber_count: sentCount,
       subject,
     });
 
     return new Response(
-      JSON.stringify({ success: true, count: subscribers.length }),
+      JSON.stringify({ success: true, count: sentCount }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
