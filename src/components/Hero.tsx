@@ -146,10 +146,10 @@ const Hero = () => {
 
           {/* Headline */}
           <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-            <span className="text-foreground">Cheap Flights from</span>
+            <span className="text-foreground drop-shadow-lg">Cheap Flights from</span>
             <br />
-            <span className="bg-gradient-sky bg-clip-text text-transparent">
-              Atlanta (ATL)
+            <span className="text-foreground drop-shadow-lg">
+              Atlanta <span className="text-accent">(ATL)</span>
             </span>
           </h1>
 
@@ -164,18 +164,18 @@ const Hero = () => {
             <div className="flex flex-col sm:flex-row gap-3 p-2 bg-card rounded-xl shadow-xl">
               <Input
                 type="text"
-                placeholder="Your name"
+                placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="flex-1 h-14 text-lg border-0 focus-visible:ring-0"
+                className="flex-1 h-14 text-lg border-0 focus-visible:ring-0 placeholder:text-muted-foreground/60"
                 disabled={isLoading}
               />
               <Input
                 type="email"
-                placeholder="your@email.com"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 h-14 text-lg border-0 focus-visible:ring-0"
+                className="flex-1 h-14 text-lg border-0 focus-visible:ring-0 placeholder:text-muted-foreground/60"
                 disabled={isLoading}
               />
               <Button 
