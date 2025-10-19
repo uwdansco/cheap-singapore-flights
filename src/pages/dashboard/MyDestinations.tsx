@@ -58,7 +58,7 @@ const MyDestinations = () => {
             .eq('destination_id', dest.destination_id)
             .order('checked_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           return {
             ...dest,
