@@ -459,14 +459,14 @@ export const AddDestinationDialog = ({
                   <Slider
                     value={[threshold]}
                     onValueChange={([value]) => setThreshold(value)}
-                    min={200}
+                    min={50}
                     max={1500}
                     step={10}
                     className="w-full"
                   />
 
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>$200</span>
+                    <span>$50</span>
                     <span>$1500</span>
                   </div>
                 </div>
@@ -547,7 +547,7 @@ export const AddDestinationDialog = ({
                 <Slider
                   value={[threshold || 500]}
                   onValueChange={([value]) => setThreshold(value)}
-                  min={200}
+                  min={50}
                   max={1500}
                   step={10}
                   className="w-full"
@@ -555,7 +555,7 @@ export const AddDestinationDialog = ({
                 />
 
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>$200</span>
+                  <span>$50</span>
                   <span>$1500</span>
                 </div>
               </div>
