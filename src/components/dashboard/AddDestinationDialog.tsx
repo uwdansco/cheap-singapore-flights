@@ -278,21 +278,29 @@ export const AddDestinationDialog = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-              {filteredDestinations.map((dest) => (
-                <button
-                  key={dest.id}
-                  onClick={() => handleSelectDestination(dest)}
-                  className="p-4 text-left rounded-lg border hover:border-primary transition-colors"
-                >
-                  <h3 className="font-semibold">{dest.city_name}</h3>
-                  <p className="text-sm text-muted-foreground">{dest.country}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <Badge variant="secondary">{dest.airport_code}</Badge>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {filteredDestinations.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  {searchQuery ? 'No destinations found matching your search' : 'No destinations available'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                {filteredDestinations.map((dest) => (
+                  <button
+                    key={dest.id}
+                    onClick={() => handleSelectDestination(dest)}
+                    className="p-4 text-left rounded-lg border border-border hover:border-primary hover:bg-accent transition-colors"
+                  >
+                    <h3 className="font-semibold">{dest.city_name}</h3>
+                    <p className="text-sm text-muted-foreground">{dest.country}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <Badge variant="secondary">{dest.airport_code}</Badge>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
