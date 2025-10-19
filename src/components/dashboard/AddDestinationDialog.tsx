@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Destination = {
   id: string;
@@ -45,7 +46,7 @@ export const AddDestinationDialog = ({
   const [filteredDestinations, setFilteredDestinations] = useState<Destination[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
-  const [threshold, setThreshold] = useState(0);
+  const [threshold, setThreshold] = useState(500);
   const [loading, setLoading] = useState(false);
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState<{
@@ -53,6 +54,11 @@ export const AddDestinationDialog = ({
     reasoning: string;
     confidence: string;
   } | null>(null);
+  
+  // New destination form
+  const [newCity, setNewCity] = useState('');
+  const [newCountry, setNewCountry] = useState('');
+  const [newAirportCode, setNewAirportCode] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -79,33 +85,23 @@ export const AddDestinationDialog = ({
     if (!user) return;
 
     try {
-      console.log('Fetching available destinations for user:', user.id);
-      
-      // Get user's tracked destinations
       const { data: tracked, error: trackedError } = await (supabase as any)
         .from('user_destinations')
         .select('destination_id')
         .eq('user_id', user.id);
 
-      console.log('Tracked destinations:', tracked, 'Error:', trackedError);
-
       const trackedIds = (tracked || []).map((t: any) => t.destination_id);
-      console.log('Tracked IDs:', trackedIds);
 
-      // Get all active destinations
       let query = (supabase as any)
         .from('destinations')
         .select('*')
         .eq('is_active', true);
 
-      // Only filter out tracked destinations if user has any
       if (trackedIds.length > 0) {
         query = query.not('id', 'in', `(${trackedIds.join(',')})`);
       }
 
       const { data, error } = await query;
-
-      console.log('Available destinations:', data, 'Error:', error);
 
       if (error) throw error;
 
@@ -116,7 +112,6 @@ export const AddDestinationDialog = ({
         airport_code: d.airport_code,
       }));
 
-      console.log('Processed destinations:', typedData.length, 'destinations');
       setDestinations(typedData);
       setFilteredDestinations(typedData);
     } catch (error: any) {
@@ -134,36 +129,27 @@ export const AddDestinationDialog = ({
     setLoadingAI(true);
     
     try {
-      console.log('Calling recommend-threshold for destination:', dest.id);
       const { data, error } = await supabase.functions.invoke('recommend-threshold', {
         body: { destination_id: dest.id }
       });
 
-      console.log('AI Response:', { data, error });
+      if (error) throw error;
 
-      if (error) {
-        console.error('Error from edge function:', error);
-        throw error;
+      if (data && data.recommended_threshold) {
+        setAiRecommendation({
+          threshold: data.recommended_threshold,
+          reasoning: data.reasoning,
+          confidence: data.confidence,
+        });
+        setThreshold(data.recommended_threshold);
+        
+        toast({
+          title: '✨ AI Recommendation Ready',
+          description: data.reasoning,
+        });
       }
-
-      if (!data || !data.recommended_threshold) {
-        throw new Error('Invalid response from AI function');
-      }
-
-      setAiRecommendation({
-        threshold: data.recommended_threshold,
-        reasoning: data.reasoning,
-        confidence: data.confidence,
-      });
-      setThreshold(data.recommended_threshold);
-      
-      toast({
-        title: '✨ AI Recommendation Ready',
-        description: data.reasoning,
-      });
     } catch (error: any) {
       console.error('Error getting AI recommendation:', error);
-      // Fallback to default threshold
       const fallbackThreshold = 500;
       setThreshold(fallbackThreshold);
       setAiRecommendation({
@@ -183,16 +169,9 @@ export const AddDestinationDialog = ({
   };
 
   const handleAdd = async () => {
-    if (!selectedDestination || !user) {
-      console.error('Missing required data:', { selectedDestination, user });
-      return;
-    }
-
-    console.log('Starting add destination process...');
-    console.log('Current count:', currentCount, 'Max count:', maxCount);
+    if (!selectedDestination || !user) return;
 
     if (currentCount >= maxCount) {
-      console.log('Limit reached');
       toast({
         title: 'Limit reached',
         description: 'Upgrade to Pro to track unlimited destinations',
@@ -202,47 +181,29 @@ export const AddDestinationDialog = ({
     }
 
     setLoading(true);
-    console.log('Attempting to insert:', {
-      user_id: user.id,
-      destination_id: selectedDestination.id,
-      price_threshold: threshold,
-    });
 
     try {
-      const { data, error } = await (supabase as any)
+      const { error } = await (supabase as any)
         .from('user_destinations')
         .insert({
           user_id: user.id,
           destination_id: selectedDestination.id,
           price_threshold: threshold,
           is_active: true,
-        })
-        .select();
+        });
 
-      console.log('Insert result:', { data, error });
+      if (error) throw error;
 
-      if (error) {
-        console.error('Insert error:', error);
-        throw error;
-      }
-
-      console.log('Successfully added destination');
       toast({
         title: 'Success!',
         description: `Now tracking ${selectedDestination.city_name}`,
       });
 
-      console.log('Calling onSuccess callback');
       onSuccess();
-      
-      console.log('Closing dialog');
       onOpenChange(false);
-      
-      console.log('Resetting state');
       setSelectedDestination(null);
       setSearchQuery('');
     } catch (error: any) {
-      console.error('Error in handleAdd:', error);
       toast({
         title: 'Error',
         description: error.message,
@@ -250,7 +211,78 @@ export const AddDestinationDialog = ({
       });
     } finally {
       setLoading(false);
-      console.log('Add process complete');
+    }
+  };
+
+  const handleAddNewDestination = async () => {
+    if (!user || !newCity.trim() || !newCountry.trim()) {
+      toast({
+        title: 'Missing information',
+        description: 'Please provide city and country names',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (currentCount >= maxCount) {
+      toast({
+        title: 'Limit reached',
+        description: 'Upgrade to Pro to track unlimited destinations',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // First, create the destination
+      const { data: destData, error: destError } = await (supabase as any)
+        .from('destinations')
+        .insert({
+          city_name: newCity.trim(),
+          country: newCountry.trim(),
+          airport_code: newAirportCode.trim().toUpperCase() || 'N/A',
+          priority: 999,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (destError) throw destError;
+
+      // Then track it
+      const { error: trackError } = await (supabase as any)
+        .from('user_destinations')
+        .insert({
+          user_id: user.id,
+          destination_id: destData.id,
+          price_threshold: threshold || 500,
+          is_active: true,
+        });
+
+      if (trackError) throw trackError;
+
+      toast({
+        title: 'Success!',
+        description: `Now tracking ${newCity}`,
+      });
+
+      onSuccess();
+      onOpenChange(false);
+      setNewCity('');
+      setNewCountry('');
+      setNewAirportCode('');
+      setThreshold(500);
+    } catch (error: any) {
+      console.error('Error adding destination:', error);
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -260,110 +292,191 @@ export const AddDestinationDialog = ({
         <DialogHeader>
           <DialogTitle>Add Destination to Track</DialogTitle>
           <DialogDescription>
-            {selectedDestination
-              ? 'Set your price alert threshold'
-              : 'Choose a destination to start tracking'}
+            Choose an existing destination or add a new one
           </DialogDescription>
         </DialogHeader>
 
-        {!selectedDestination ? (
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search destinations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+        <Tabs defaultValue="existing" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="existing">Existing Destinations</TabsTrigger>
+            <TabsTrigger value="new">Add New Destination</TabsTrigger>
+          </TabsList>
 
-            {filteredDestinations.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  {searchQuery ? 'No destinations found matching your search' : 'No destinations available'}
-                </p>
+          <TabsContent value="existing" className="space-y-4 mt-4">
+            {!selectedDestination ? (
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search destinations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {filteredDestinations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      {searchQuery ? 'No destinations found matching your search' : 'No destinations available'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                    {filteredDestinations.map((dest) => (
+                      <button
+                        key={dest.id}
+                        onClick={() => handleSelectDestination(dest)}
+                        className="p-4 text-left rounded-lg border border-border hover:border-primary hover:bg-accent transition-colors"
+                      >
+                        <h3 className="font-semibold">{dest.city_name}</h3>
+                        <p className="text-sm text-muted-foreground">{dest.country}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <Badge variant="secondary">{dest.airport_code}</Badge>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-                {filteredDestinations.map((dest) => (
-                  <button
-                    key={dest.id}
-                    onClick={() => handleSelectDestination(dest)}
-                    className="p-4 text-left rounded-lg border border-border hover:border-primary hover:bg-accent transition-colors"
-                  >
-                    <h3 className="font-semibold">{dest.city_name}</h3>
-                    <p className="text-sm text-muted-foreground">{dest.country}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <Badge variant="secondary">{dest.airport_code}</Badge>
+              <div className="space-y-6">
+                <div className="p-4 bg-secondary rounded-lg">
+                  <h3 className="font-semibold text-lg">{selectedDestination.city_name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedDestination.country} ({selectedDestination.airport_code})
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  {loadingAI ? (
+                    <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>AI analyzing price patterns...</span>
                     </div>
-                  </button>
-                ))}
+                  ) : (
+                    <>
+                      {aiRecommendation && (
+                        <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">AI Recommendation</span>
+                            <Badge variant={aiRecommendation.confidence === 'high' ? 'default' : 'secondary'} className="text-xs">
+                              {aiRecommendation.confidence} confidence
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground italic">{aiRecommendation.reasoning}</p>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between">
+                        <Label>Alert me when price drops below:</Label>
+                        <div className="text-2xl font-bold">${threshold}</div>
+                      </div>
+                    </>
+                  )}
+
+                  <Slider
+                    value={[threshold]}
+                    onValueChange={([value]) => setThreshold(value)}
+                    min={200}
+                    max={1500}
+                    step={10}
+                    className="w-full"
+                  />
+
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>$200</span>
+                    <span>$1500</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setSelectedDestination(null)} className="flex-1">
+                    Back
+                  </Button>
+                  <Button onClick={handleAdd} disabled={loading} className="flex-1">
+                    {loading ? 'Adding...' : 'Add Destination'}
+                  </Button>
+                </div>
               </div>
             )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="p-4 bg-secondary rounded-lg">
-              <h3 className="font-semibold text-lg">{selectedDestination.city_name}</h3>
-              <p className="text-sm text-muted-foreground">
-                {selectedDestination.country} ({selectedDestination.airport_code})
-              </p>
-            </div>
+          </TabsContent>
 
+          <TabsContent value="new" className="space-y-4 mt-4">
             <div className="space-y-4">
-              {loadingAI ? (
-                <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>AI analyzing price patterns...</span>
-                </div>
-              ) : (
-                <>
-                  {aiRecommendation && (
-                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">AI Recommendation</span>
-                        <Badge variant={aiRecommendation.confidence === 'high' ? 'default' : 'secondary'} className="text-xs">
-                          {aiRecommendation.confidence} confidence
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground italic">{aiRecommendation.reasoning}</p>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    <Label>Alert me when price drops below:</Label>
-                    <div className="text-2xl font-bold">${threshold}</div>
-                  </div>
-                </>
-              )}
-
-              <Slider
-                value={[threshold]}
-                onValueChange={([value]) => setThreshold(value)}
-                min={200}
-                max={1500}
-                step={10}
-                className="w-full"
-              />
-
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>$200</span>
-                <span>$1500</span>
+              <div className="space-y-2">
+                <Label htmlFor="city">City Name *</Label>
+                <Input
+                  id="city"
+                  placeholder="e.g., Dallas, Tokyo, Paris"
+                  value={newCity}
+                  onChange={(e) => setNewCity(e.target.value)}
+                />
               </div>
-            </div>
 
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setSelectedDestination(null)} className="flex-1">
-                Back
-              </Button>
-              <Button onClick={handleAdd} disabled={loading} className="flex-1">
-                {loading ? 'Adding...' : 'Add Destination'}
+              <div className="space-y-2">
+                <Label htmlFor="country">Country *</Label>
+                <Input
+                  id="country"
+                  placeholder="e.g., USA, Japan, France"
+                  value={newCountry}
+                  onChange={(e) => setNewCountry(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="airport">Airport Code (Optional)</Label>
+                <Input
+                  id="airport"
+                  placeholder="e.g., DFW, NRT, CDG"
+                  value={newAirportCode}
+                  onChange={(e) => setNewAirportCode(e.target.value)}
+                  maxLength={3}
+                />
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <Label>Price alert threshold:</Label>
+                  <div className="text-2xl font-bold">${threshold || 500}</div>
+                </div>
+
+                <Slider
+                  value={[threshold || 500]}
+                  onValueChange={([value]) => setThreshold(value)}
+                  min={200}
+                  max={1500}
+                  step={10}
+                  className="w-full"
+                />
+
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>$200</span>
+                  <span>$1500</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleAddNewDestination} 
+                disabled={loading || !newCity.trim() || !newCountry.trim()}
+                className="w-full"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add & Track Destination
+                  </>
+                )}
               </Button>
             </div>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
