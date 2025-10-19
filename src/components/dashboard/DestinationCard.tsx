@@ -65,15 +65,28 @@ export const DestinationCard = ({
         <CardContent className="space-y-4">
           {/* Current Price */}
           <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-            <div>
+            <div className="flex-1">
               <p className="text-sm text-muted-foreground">Current Price</p>
-              <p className="text-2xl font-bold">
-                ${currentPrice ? Math.round(currentPrice) : '—'}
-              </p>
+              {currentPrice ? (
+                <p className="text-2xl font-bold">
+                  ${Math.round(currentPrice)}
+                </p>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-muted-foreground">—</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No price data yet. Prices are checked automatically every 6 hours.
+                  </p>
+                </>
+              )}
             </div>
-            {trend === 'down' && <TrendingDown className="h-8 w-8 text-green-500" />}
-            {trend === 'up' && <TrendingUp className="h-8 w-8 text-destructive" />}
-            {trend === 'neutral' && <Minus className="h-8 w-8 text-muted-foreground" />}
+            {currentPrice && (
+              <>
+                {trend === 'down' && <TrendingDown className="h-8 w-8 text-green-500" />}
+                {trend === 'up' && <TrendingUp className="h-8 w-8 text-destructive" />}
+                {trend === 'neutral' && <Minus className="h-8 w-8 text-muted-foreground" />}
+              </>
+            )}
           </div>
 
           {/* Threshold */}
