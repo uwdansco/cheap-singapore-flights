@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,16 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showReset, setShowReset] = useState(false);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/dashboard/destinations');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -41,7 +51,7 @@ const Login = () => {
         description: 'Signed in successfully.',
       });
       
-      navigate('/');
+      navigate('/dashboard/destinations');
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
