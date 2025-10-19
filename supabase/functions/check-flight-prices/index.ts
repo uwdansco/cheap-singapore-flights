@@ -104,47 +104,98 @@ async function searchFlights(
 
 function getNextDepartureDate(): string {
   const date = new Date();
-  date.setDate(date.getDate() + 30); // Look 30 days ahead
+  date.setDate(date.getDate() + 30);
+  return date.toISOString().split('T')[0];
+}
+
+function getReturnDate(departureDate: string): string {
+  const date = new Date(departureDate);
+  date.setDate(date.getDate() + 7); // 7-day trip
   return date.toISOString().split('T')[0];
 }
 
 async function classifyDeal(currentPrice: number, stats: any): Promise<{
   quality: string;
+  badge: string;
   savingsPercent: number;
   recommendation: string;
+  urgency: string;
+  currentPercentile: number;
 }> {
   if (!stats || !stats.avg_90day) {
     return {
-      quality: "UNKNOWN",
+      quality: "unknown",
+      badge: "NEW",
       savingsPercent: 0,
-      recommendation: "Not enough historical data to classify this deal"
+      recommendation: "Insufficient historical data for deal analysis",
+      urgency: "low",
+      currentPercentile: 50
     };
   }
 
   const avg90 = parseFloat(stats.avg_90day);
+  const allTimeLow = stats.all_time_low ? parseFloat(stats.all_time_low) : null;
   const savingsPercent = ((avg90 - currentPrice) / avg90) * 100;
+  
+  let quality = "poor";
+  let badge = "POOR";
+  let recommendation = "";
+  let urgency = "low";
 
-  let quality = "POOR";
-  let recommendation = "This is above average pricing. Consider waiting for a better deal.";
-
-  if (currentPrice <= stats.all_time_low || savingsPercent >= 40) {
-    quality = "EXCEPTIONAL";
-    recommendation = "🔥 ALL-TIME LOW! Book immediately - prices rarely get this low!";
+  if ((allTimeLow && currentPrice <= allTimeLow) || savingsPercent >= 40) {
+    quality = "exceptional";
+    badge = "🔥 EXCEPTIONAL";
+    recommendation = "This is an all-time low! Prices at this level occur only 1-2 times per year. Book within 24 hours as prices will likely rise.";
+    urgency = "high";
   } else if (savingsPercent >= 30) {
-    quality = "EXCELLENT";
-    recommendation = "⭐ Excellent deal! Book within 24 hours as prices may rise.";
+    quality = "excellent";
+    badge = "⭐ EXCELLENT";
+    recommendation = "Outstanding deal! This price is in the bottom 10% of all prices. Occurs only 3-4 times per year. We strongly recommend booking within 48 hours.";
+    urgency = "high";
   } else if (savingsPercent >= 20) {
-    quality = "GREAT";
-    recommendation = "Great price! This is a solid deal worth booking.";
+    quality = "great";
+    badge = "✨ GREAT";
+    recommendation = "Great price! This is well below average and occurs 5-8 times per year. Consider booking within 3 days.";
+    urgency = "moderate";
   } else if (savingsPercent >= 10) {
-    quality = "GOOD";
-    recommendation = "Good deal! Consider booking if the dates work for you.";
+    quality = "good";
+    badge = "👍 GOOD";
+    recommendation = "Good deal! This price is below average. Worth booking if the dates work for you.";
+    urgency = "moderate";
   } else if (savingsPercent >= 0) {
-    quality = "FAIR";
-    recommendation = "Fair price, slightly below average. Could wait for better.";
+    quality = "fair";
+    badge = "FAIR";
+    recommendation = "Fair price, slightly below average. You might want to wait for a better deal.";
+    urgency = "low";
+  } else {
+    quality = "poor";
+    badge = "POOR";
+    recommendation = "Price is above average. We recommend waiting for a better deal.";
+    urgency = "low";
   }
 
-  return { quality, savingsPercent, recommendation };
+  // Calculate current percentile
+  let currentPercentile = 50;
+  if (stats.percentile_25 && stats.percentile_75) {
+    const p25 = parseFloat(stats.percentile_25);
+    const p75 = parseFloat(stats.percentile_75);
+    if (currentPrice <= p25) {
+      currentPercentile = 25;
+    } else if (currentPrice >= p75) {
+      currentPercentile = 75;
+    } else {
+      currentPercentile = 50;
+    }
+  }
+
+  return {
+    quality,
+    badge,
+    savingsPercent: Math.round(savingsPercent),
+    recommendation,
+    urgency,
+    currentPercentile
+  };
 }
 
 serve(async (req) => {
@@ -159,11 +210,9 @@ serve(async (req) => {
 
     console.log("Starting flight price check...");
 
-    // Get Amadeus access token
     const accessToken = await getAmadeusAccessToken();
     console.log("Got Amadeus access token");
 
-    // Get all active destinations
     const { data: destinations, error: destError } = await supabase
       .from("destinations")
       .select("*")
@@ -177,20 +226,15 @@ serve(async (req) => {
 
     const results = [];
     let alertsTriggered = 0;
+    const origin = "ATL";
 
-    // Process each destination
     for (const destination of destinations || []) {
       try {
         console.log(`Checking ${destination.city_name} (${destination.airport_code})...`);
 
-        // Search for flights
         const departureDate = getNextDepartureDate();
-        const price = await searchFlights(
-          accessToken,
-          "ATL", // Atlanta
-          destination.airport_code,
-          departureDate
-        );
+        const returnDate = getReturnDate(departureDate);
+        const price = await searchFlights(accessToken, origin, destination.airport_code, departureDate);
 
         if (price === null) {
           console.log(`No price found for ${destination.city_name}`);
@@ -200,24 +244,18 @@ serve(async (req) => {
         console.log(`Found price for ${destination.city_name}: $${price}`);
 
         // Save to price history
-        const { error: historyError } = await supabase
+        await supabase
           .from("price_history")
           .insert({
             destination_id: destination.id,
             price: price,
             outbound_date: departureDate,
+            return_date: returnDate,
             checked_at: new Date().toISOString(),
           });
 
-        if (historyError) {
-          console.error("Error saving price history:", historyError);
-        }
-
         // Refresh price statistics
-        const { error: statsError } = await supabase.rpc("refresh_price_statistics");
-        if (statsError) {
-          console.error("Error refreshing statistics:", statsError);
-        }
+        await supabase.rpc("refresh_price_statistics");
 
         // Get updated statistics
         const { data: stats } = await supabase
@@ -227,83 +265,174 @@ serve(async (req) => {
           .single();
 
         // Classify the deal
-        const dealAnalysis = await classifyDeal(price, stats);
+        const dealClassification = await classifyDeal(price, stats);
 
-        // Check if any users should be alerted
-        const { data: userDestinations } = await supabase
+        // Fetch admin settings
+        const { data: adminSettings } = await supabase
+          .from("admin_settings")
+          .select("setting_key, setting_value")
+          .in("setting_key", ["alert_min_history_days", "alert_min_price_drop"]);
+
+        const minHistoryDays = adminSettings?.find(s => s.setting_key === "alert_min_history_days")?.setting_value || 30;
+        const adminMinPriceDrop = adminSettings?.find(s => s.setting_key === "alert_min_price_drop")?.setting_value || 5;
+
+        // Check if we have enough price history (false positive prevention)
+        if (!stats || (stats.total_samples || 0) < 7) {
+          console.log(`Insufficient price history for ${destination.city_name} (${stats?.total_samples || 0} samples)`);
+          continue;
+        }
+
+        // Check for outlier prices (false positive prevention)
+        if (stats.std_deviation && stats.avg_90day) {
+          const zScore = Math.abs((price - parseFloat(stats.avg_90day)) / parseFloat(stats.std_deviation));
+          if (zScore > 2 && price < parseFloat(stats.avg_90day)) {
+            console.log(`⚠️ Outlier price detected for ${destination.city_name}, flagging for review`);
+          }
+        }
+
+        // Get interested users
+        const { data: interestedUsers } = await supabase
           .from("user_destinations")
-          .select("*, user_preferences!inner(email_notifications_enabled)")
+          .select("*")
           .eq("destination_id", destination.id)
-          .eq("is_active", true)
-          .lte("price_threshold", price);
+          .eq("is_active", true);
 
-        // Trigger alerts for matching users
-        for (const userDest of userDestinations || []) {
-          // Check cooldown period
-          const cooldownHours = (userDest.alert_cooldown_days || 7) * 24;
-          const lastAlert = userDest.last_alert_sent_at ? new Date(userDest.last_alert_sent_at) : null;
-          const hoursSinceLastAlert = lastAlert 
-            ? (Date.now() - lastAlert.getTime()) / (1000 * 60 * 60)
-            : Infinity;
-
-          // Skip if within cooldown (unless EXCEPTIONAL)
-          if (dealAnalysis.quality !== "EXCEPTIONAL" && hoursSinceLastAlert < cooldownHours) {
-            console.log(`Skipping alert for user ${userDest.user_id} - cooldown active`);
+        // Send alerts to qualifying users
+        for (const userDest of interestedUsers || []) {
+          // 1. Check if price is below threshold (REQUIRED)
+          if (price > userDest.price_threshold) {
             continue;
           }
 
-          // Create price alert
+          // 2. Check deal quality meets minimum requirement
+          const qualityLevels: {[key: string]: number} = { 
+            any: 0, poor: 1, fair: 2, good: 3, great: 4, excellent: 5, exceptional: 6 
+          };
+          const minQuality = userDest.min_deal_quality || "good";
+          if (qualityLevels[dealClassification.quality] < qualityLevels[minQuality]) {
+            console.log(`Deal quality ${dealClassification.quality} below minimum ${minQuality} for user ${userDest.user_id}`);
+            continue;
+          }
+
+          // 3. Check cooldown period (unless EXCEPTIONAL deal)
+          if (userDest.last_alert_sent_at && dealClassification.quality !== "exceptional") {
+            const daysSinceLastAlert = (Date.now() - new Date(userDest.last_alert_sent_at).getTime()) / (1000 * 60 * 60 * 24);
+            const cooldownDays = userDest.alert_cooldown_days || 7;
+            
+            if (daysSinceLastAlert < cooldownDays) {
+              console.log(`Cooldown active for user ${userDest.user_id} (${daysSinceLastAlert.toFixed(1)}/${cooldownDays} days)`);
+              continue;
+            }
+          }
+
+          // 4. Check if price is meaningfully better than last alert
+          if (userDest.last_alert_sent_at && dealClassification.quality !== "exceptional") {
+            const { data: lastAlert } = await supabase
+              .from("price_alerts")
+              .select("triggered_price")
+              .eq("user_id", userDest.user_id)
+              .eq("destination_id", destination.id)
+              .order("sent_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (lastAlert?.triggered_price) {
+              const minDropPercent = userDest.min_price_drop_percent || adminMinPriceDrop;
+              const improvementPercent = ((lastAlert.triggered_price - price) / lastAlert.triggered_price) * 100;
+              if (improvementPercent < minDropPercent) {
+                console.log(`Price improvement ${improvementPercent.toFixed(1)}% below minimum ${minDropPercent}%`);
+                continue;
+              }
+            }
+          }
+
+          // 5. Check weekly alert limit
+          const { data: recentAlerts } = await supabase
+            .from("price_alerts")
+            .select("id")
+            .eq("user_id", userDest.user_id)
+            .gte("sent_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+          const { data: userPrefs } = await supabase
+            .from("user_preferences")
+            .select("max_alerts_per_week")
+            .eq("user_id", userDest.user_id)
+            .maybeSingle();
+
+          const maxAlertsPerWeek = userPrefs?.max_alerts_per_week || 10;
+          if (recentAlerts && recentAlerts.length >= maxAlertsPerWeek && dealClassification.quality !== "exceptional") {
+            console.log(`Weekly alert limit reached (${recentAlerts.length}/${maxAlertsPerWeek})`);
+            continue;
+          }
+
+          // All checks passed - create price alert
+          const bookingLink = `https://www.google.com/flights?hl=en#flt=${origin}.${destination.airport_code}.${departureDate}*${destination.airport_code}.${origin}.${returnDate}`;
+          
           const { error: alertError } = await supabase
             .from("price_alerts")
             .insert({
               user_id: userDest.user_id,
               destination_id: destination.id,
               price: price,
+              dates: `${departureDate} - ${returnDate}`,
+              booking_link: bookingLink,
+              deal_quality: dealClassification.quality,
               tracking_threshold: userDest.price_threshold,
-              deal_quality: dealAnalysis.quality,
-              savings_percent: dealAnalysis.savingsPercent,
-              avg_90day_price: stats?.avg_90day,
-              all_time_low: stats?.all_time_low,
-              dates: departureDate,
+              all_time_low: stats.all_time_low,
+              avg_90day_price: stats.avg_90day,
+              savings_percent: dealClassification.savingsPercent,
+              sent_at: new Date().toISOString(),
+              triggered_price: price,
+              threshold_price: userDest.price_threshold,
+              outbound_date: departureDate,
+              return_date: returnDate
             });
 
-          if (!alertError) {
-            // Queue email
-            await supabase.rpc("queue_email", {
-              p_user_id: userDest.user_id,
-              p_email_type: "price_alert",
-              p_email_data: {
-                destination: destination.city_name,
-                country: destination.country,
-                current_price: price,
-                user_threshold: userDest.price_threshold,
-                deal_quality: dealAnalysis.quality,
-                savings_percent: dealAnalysis.savingsPercent,
-                recommendation: dealAnalysis.recommendation,
-                avg_90day: stats?.avg_90day,
-                all_time_low: stats?.all_time_low,
-              },
-            });
-
-            // Update last alert timestamp
-            await supabase
-              .from("user_destinations")
-              .update({ last_alert_sent_at: new Date().toISOString() })
-              .eq("id", userDest.id);
-
-            alertsTriggered++;
-            console.log(`Alert triggered for user ${userDest.user_id}`);
+          if (alertError) {
+            console.error("Error creating price alert:", alertError);
+            continue;
           }
+
+          // Queue email notification
+          await supabase.rpc("queue_email", {
+            p_user_id: userDest.user_id,
+            p_email_type: "price_alert",
+            p_email_data: {
+              destination_city: destination.city_name,
+              destination_country: destination.country,
+              current_price: price,
+              user_threshold: userDest.price_threshold,
+              outbound_date: departureDate,
+              return_date: returnDate,
+              booking_link: bookingLink,
+              deal_quality: dealClassification.badge,
+              savings_percent: dealClassification.savingsPercent,
+              recommendation: dealClassification.recommendation,
+              urgency: dealClassification.urgency,
+              avg_90day: stats.avg_90day,
+              all_time_low: stats.all_time_low,
+              current_percentile: dealClassification.currentPercentile
+            }
+          });
+
+          // Update last alert sent time
+          await supabase
+            .from("user_destinations")
+            .update({ last_alert_sent_at: new Date().toISOString() })
+            .eq("id", userDest.id);
+
+          alertsTriggered++;
+          console.log(`✅ Alert sent to user ${userDest.user_id} - ${dealClassification.badge}`);
         }
 
         results.push({
           destination: destination.city_name,
           price,
-          quality: dealAnalysis.quality,
-          savings: dealAnalysis.savingsPercent,
+          quality: dealClassification.quality,
+          savings: dealClassification.savingsPercent,
         });
 
-        // Rate limiting - wait 1 second between API calls
+        // Rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error: any) {
@@ -315,7 +444,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Price check complete. Checked ${results.length} destinations, triggered ${alertsTriggered} alerts`);
+    console.log(`✅ Price check complete. Checked ${results.length} destinations, triggered ${alertsTriggered} alerts`);
 
     return new Response(
       JSON.stringify({

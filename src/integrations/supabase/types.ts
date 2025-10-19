@@ -231,11 +231,16 @@ export type Database = {
           email_opened: boolean | null
           id: string
           link_clicked: boolean | null
+          outbound_date: string | null
           price: number
           received_at: string
+          return_date: string | null
           savings_percent: number | null
+          sent_at: string | null
           sent_to_subscribers: boolean
+          threshold_price: number | null
           tracking_threshold: number | null
+          triggered_price: number | null
           user_id: string | null
         }
         Insert: {
@@ -248,11 +253,16 @@ export type Database = {
           email_opened?: boolean | null
           id?: string
           link_clicked?: boolean | null
+          outbound_date?: string | null
           price: number
           received_at?: string
+          return_date?: string | null
           savings_percent?: number | null
+          sent_at?: string | null
           sent_to_subscribers?: boolean
+          threshold_price?: number | null
           tracking_threshold?: number | null
+          triggered_price?: number | null
           user_id?: string | null
         }
         Update: {
@@ -265,11 +275,16 @@ export type Database = {
           email_opened?: boolean | null
           id?: string
           link_clicked?: boolean | null
+          outbound_date?: string | null
           price?: number
           received_at?: string
+          return_date?: string | null
           savings_percent?: number | null
+          sent_at?: string | null
           sent_to_subscribers?: boolean
+          threshold_price?: number | null
           tracking_threshold?: number | null
+          triggered_price?: number | null
           user_id?: string | null
         }
         Relationships: [
@@ -486,33 +501,42 @@ export type Database = {
       user_destinations: {
         Row: {
           alert_cooldown_days: number
+          alert_frequency: string | null
           created_at: string
           destination_id: string
           id: string
           is_active: boolean
           last_alert_sent_at: string | null
+          min_deal_quality: string | null
+          min_price_drop_percent: number | null
           price_threshold: number
           updated_at: string
           user_id: string
         }
         Insert: {
           alert_cooldown_days?: number
+          alert_frequency?: string | null
           created_at?: string
           destination_id: string
           id?: string
           is_active?: boolean
           last_alert_sent_at?: string | null
+          min_deal_quality?: string | null
+          min_price_drop_percent?: number | null
           price_threshold: number
           updated_at?: string
           user_id: string
         }
         Update: {
           alert_cooldown_days?: number
+          alert_frequency?: string | null
           created_at?: string
           destination_id?: string
           id?: string
           is_active?: boolean
           last_alert_sent_at?: string | null
+          min_deal_quality?: string | null
+          min_price_drop_percent?: number | null
           price_threshold?: number
           updated_at?: string
           user_id?: string
@@ -534,6 +558,9 @@ export type Database = {
           email_notifications_enabled: boolean
           id: string
           last_login_at: string | null
+          max_alerts_per_week: number | null
+          quiet_hours_end: number | null
+          quiet_hours_start: number | null
           updated_at: string
           user_id: string
         }
@@ -543,6 +570,9 @@ export type Database = {
           email_notifications_enabled?: boolean
           id?: string
           last_login_at?: string | null
+          max_alerts_per_week?: number | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
           updated_at?: string
           user_id: string
         }
@@ -552,6 +582,9 @@ export type Database = {
           email_notifications_enabled?: boolean
           id?: string
           last_login_at?: string | null
+          max_alerts_per_week?: number | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
           updated_at?: string
           user_id?: string
         }

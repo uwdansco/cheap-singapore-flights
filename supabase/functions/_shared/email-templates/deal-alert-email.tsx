@@ -4,6 +4,7 @@ import {
   Container,
   Head,
   Heading,
+  Hr,
   Html,
   Img,
   Link,
@@ -14,27 +15,39 @@ import {
 import * as React from 'https://esm.sh/react@18.3.1';
 
 interface DealAlertEmailProps {
-  destination: {
-    city_name: string;
-    country: string;
-    airport_code: string;
-  };
-  price: number;
-  currency: string;
+  destination_city: string;
+  destination_country: string;
+  current_price: number;
+  user_threshold: number;
   outbound_date: string;
   return_date: string;
   booking_link: string;
-  unsubscribeUrl: string;
+  unsubscribeUrl?: string;
+  deal_quality?: string;
+  savings_percent?: number;
+  recommendation?: string;
+  urgency?: string;
+  avg_90day?: number;
+  all_time_low?: number;
+  current_percentile?: number;
 }
 
 export const DealAlertEmail = ({
-  destination,
-  price,
-  currency,
+  destination_city,
+  destination_country,
+  current_price,
+  user_threshold,
   outbound_date,
   return_date,
   booking_link,
-  unsubscribeUrl,
+  unsubscribeUrl = '#',
+  deal_quality = '👍 GOOD',
+  savings_percent = 0,
+  recommendation = '',
+  urgency = 'moderate',
+  avg_90day,
+  all_time_low,
+  current_percentile = 50
 }: DealAlertEmailProps) => {
   const formatDate = (dateStr: string) => {
     try {
@@ -44,56 +57,88 @@ export const DealAlertEmail = ({
       return dateStr;
     }
   };
+  
+  const savings = avg_90day ? Math.round(avg_90day - current_price) : 0;
+  const urgencyColor = urgency === 'high' ? '#dc2626' : urgency === 'moderate' ? '#f59e0b' : '#10b981';
+  const urgencyText = urgency === 'high' ? '🔴 HIGH URGENCY - Book within 24 hours' : 
+                      urgency === 'moderate' ? '🟡 MODERATE - Book within 3 days' : 
+                      '🟢 LOW - You have time to consider';
 
   return (
     <Html>
       <Head />
-      <Preview>🎯 Deal Alert: Atlanta to {destination.city_name} from ${price.toString()}</Preview>
+      <Preview>🎉 {deal_quality} Deal: Atlanta to {destination_city} - ${Math.round(current_price)}</Preview>
       <Body style={main}>
         <Container style={container}>
-          {/* Header */}
           <Section style={header}>
             <Heading style={h1}>✈️ Cheap Atlanta Flights</Heading>
-            <Text style={dealBadge}>🎯 DEAL ALERT</Text>
+            <Text style={dealBadge}>{deal_quality}</Text>
           </Section>
 
-          {/* Hero Section */}
           <Section style={heroSection}>
             <Img
-              src={`https://source.unsplash.com/800x400/?${destination.city_name},travel,city`}
-              alt={destination.city_name}
+              src={`https://source.unsplash.com/800x400/?${destination_city},travel,city`}
+              alt={destination_city}
               style={heroImage}
             />
           </Section>
 
-          {/* Deal Details */}
           <Section style={content}>
             <Heading style={destinationHeading}>
-              Atlanta → {destination.city_name}
+              Atlanta → {destination_city}
             </Heading>
-            <Text style={countryText}>
-              {destination.country} ({destination.airport_code})
-            </Text>
+            <Text style={countryText}>{destination_country}</Text>
 
-            <Section style={priceBox}>
-              <Text style={priceLabel}>ROUNDTRIP FROM</Text>
-              <Text style={priceAmount}>${price}</Text>
-              <Text style={priceCurrency}>{currency}</Text>
+            {/* Price Context Box */}
+            <Section style={priceContextBox}>
+              <Text style={priceBoxTitle}>PRICE BREAKDOWN</Text>
+              <Hr style={divider} />
+              <Text style={priceRow}>
+                <strong>Current Price:</strong> <span style={priceHighlight}>${Math.round(current_price)}</span>
+              </Text>
+              <Text style={priceRow}>
+                <strong>Your Threshold:</strong> ${Math.round(user_threshold)}
+              </Text>
+              {avg_90day && (
+                <Text style={priceRow}>
+                  <strong>90-Day Average:</strong> ${Math.round(avg_90day)}
+                </Text>
+              )}
+              {all_time_low && (
+                <Text style={priceRow}>
+                  <strong>All-Time Low:</strong> ${Math.round(all_time_low)}
+                </Text>
+              )}
+              {savings > 0 && (
+                <Text style={savingsRow}>
+                  <strong>Your Savings:</strong> <span style={savingsHighlight}>${savings} ({savings_percent}%)</span>
+                </Text>
+              )}
+              <Text style={priceRow}>
+                <strong>Deal Quality:</strong> {deal_quality}
+              </Text>
             </Section>
 
+            {/* Urgency Indicator */}
+            <Section style={{...urgencyBox, borderColor: urgencyColor}}>
+              <Text style={{...urgencyTextStyle, color: urgencyColor}}>{urgencyText}</Text>
+            </Section>
+
+            {/* Recommendation */}
+            {recommendation && (
+              <Text style={recommendationText}>{recommendation}</Text>
+            )}
+
             <Section style={detailsBox}>
-              <Section style={detailRow}>
-                <Text style={detailLabel}>✈️ Departure</Text>
-                <Text style={detailValue}>{formatDate(outbound_date)}</Text>
-              </Section>
-              <Section style={detailRow}>
-                <Text style={detailLabel}>🏠 Return</Text>
-                <Text style={detailValue}>{formatDate(return_date)}</Text>
-              </Section>
-              <Section style={detailRow}>
-                <Text style={detailLabel}>📍 From</Text>
-                <Text style={detailValue}>Atlanta (ATL)</Text>
-              </Section>
+              <Text style={detailRow}>
+                <strong>✈️ Departure:</strong> {formatDate(outbound_date)}
+              </Text>
+              <Text style={detailRow}>
+                <strong>🏠 Return:</strong> {formatDate(return_date)}
+              </Text>
+              <Text style={detailRow}>
+                <strong>📍 From:</strong> Atlanta (ATL)
+              </Text>
             </Section>
 
             <Section style={buttonContainer}>
@@ -101,50 +146,14 @@ export const DealAlertEmail = ({
                 Book This Deal Now
               </Button>
             </Section>
-
-            <Section style={infoBox}>
-              <Heading style={infoHeading}>Why This Is a Great Deal:</Heading>
-              <Text style={infoBullet}>
-                ✓ Significantly below average pricing for this route
-              </Text>
-              <Text style={infoBullet}>
-                ✓ Flexible travel dates available
-              </Text>
-              <Text style={infoBullet}>
-                ✓ Limited availability - book soon!
-              </Text>
-            </Section>
-
-            <Section style={warningBox}>
-              <Text style={warningText}>
-                ⚡ <strong>Act Fast!</strong> Flight prices change frequently and this deal may not last long.
-              </Text>
-            </Section>
-
-            <Text style={tipsText}>
-              <strong>Pro Tip:</strong> Clear your browser cookies before booking, and consider using
-              incognito mode to potentially see better prices.
-            </Text>
           </Section>
 
-          {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              You're receiving this because you subscribed to Cheap Atlanta Flights deal alerts.
-            </Text>
-            <Text style={footerText}>
-              Happy travels from the Cheap Atlanta Flights Team! ✈️
+              You're receiving this because you subscribed to Cheap Atlanta Flights price alerts.
             </Text>
             <Text style={footerLinks}>
-              <Link href={unsubscribeUrl} style={footerLink}>
-                Unsubscribe
-              </Link> • 
-              <Link href="https://cheapatlantaflights.com/deals" style={footerLink}>
-                {' '}Browse All Deals
-              </Link> • 
-              <Link href="mailto:support@cheapatlantaflights.com" style={footerLink}>
-                {' '}Contact Us
-              </Link>
+              <Link href={unsubscribeUrl} style={footerLink}>Unsubscribe</Link>
             </Text>
           </Section>
         </Container>
@@ -155,18 +164,14 @@ export const DealAlertEmail = ({
 
 export default DealAlertEmail;
 
-// Styles
 const main = {
   backgroundColor: '#f6f9fc',
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '0',
-  marginBottom: '64px',
   maxWidth: '600px',
 };
 
@@ -181,7 +186,6 @@ const h1 = {
   fontSize: '24px',
   fontWeight: 'bold',
   margin: '0 0 8px',
-  padding: '0',
 };
 
 const dealBadge = {
@@ -195,19 +199,9 @@ const dealBadge = {
   margin: '0',
 };
 
-const heroSection = {
-  padding: '0',
-};
-
-const heroImage = {
-  width: '100%',
-  height: 'auto',
-  display: 'block',
-};
-
-const content = {
-  padding: '32px 48px',
-};
+const heroSection = { padding: '0' };
+const heroImage = { width: '100%', height: 'auto', display: 'block' };
+const content = { padding: '32px 48px' };
 
 const destinationHeading = {
   color: '#333333',
@@ -224,36 +218,71 @@ const countryText = {
   textAlign: 'center' as const,
 };
 
-const priceBox = {
-  backgroundColor: '#fff5f0',
-  borderRadius: '12px',
-  padding: '32px',
-  textAlign: 'center' as const,
+const priceContextBox = {
+  backgroundColor: '#f8fafc',
+  border: '2px solid #e2e8f0',
+  borderRadius: '8px',
+  padding: '20px',
   margin: '24px 0',
-  border: '2px solid #FF6B35',
 };
 
-const priceLabel = {
-  color: '#737373',
-  fontSize: '14px',
+const priceBoxTitle = {
+  fontSize: '12px',
   fontWeight: 'bold',
-  margin: '0 0 8px',
+  color: '#64748b',
   letterSpacing: '1px',
+  marginBottom: '12px',
 };
 
-const priceAmount = {
-  color: '#FF6B35',
-  fontSize: '48px',
+const priceRow = {
+  fontSize: '14px',
+  color: '#334155',
+  margin: '8px 0',
+};
+
+const priceHighlight = {
+  color: '#059669',
+  fontSize: '20px',
   fontWeight: 'bold',
-  margin: '0',
-  lineHeight: '1',
 };
 
-const priceCurrency = {
-  color: '#525252',
+const savingsRow = {
   fontSize: '16px',
-  margin: '4px 0 0',
+  margin: '12px 0',
+  fontWeight: 'bold',
 };
+
+const savingsHighlight = {
+  color: '#059669',
+  fontSize: '18px',
+};
+
+const urgencyBox = {
+  border: '2px solid',
+  borderRadius: '8px',
+  padding: '16px',
+  margin: '20px 0',
+  textAlign: 'center' as const,
+};
+
+const urgencyTextStyle = {
+  fontSize: '16px',
+  fontWeight: 'bold',
+  margin: 0,
+};
+
+const recommendationText = {
+  fontSize: '15px',
+  lineHeight: '24px',
+  color: '#475569',
+  backgroundColor: '#fff7ed',
+  padding: '16px',
+  borderLeft: '4px solid #f59e0b',
+  borderRadius: '4px',
+  margin: '20px 0',
+};
+
+const divider = { borderColor: '#e2e8f0', margin: '12px 0' };
 
 const detailsBox = {
   backgroundColor: '#f0f9ff',
@@ -263,22 +292,9 @@ const detailsBox = {
 };
 
 const detailRow = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  marginBottom: '12px',
-};
-
-const detailLabel = {
-  color: '#525252',
   fontSize: '16px',
-  margin: '0',
-};
-
-const detailValue = {
+  margin: '8px 0',
   color: '#333333',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  margin: '0',
 };
 
 const buttonContainer = {
@@ -296,51 +312,6 @@ const button = {
   textAlign: 'center' as const,
   display: 'inline-block',
   padding: '16px 48px',
-  boxShadow: '0 4px 6px rgba(255, 107, 53, 0.2)',
-};
-
-const infoBox = {
-  backgroundColor: '#f9fafb',
-  borderRadius: '8px',
-  padding: '20px',
-  margin: '24px 0',
-};
-
-const infoHeading = {
-  color: '#333333',
-  fontSize: '18px',
-  fontWeight: 'bold',
-  margin: '0 0 12px',
-};
-
-const infoBullet = {
-  color: '#525252',
-  fontSize: '15px',
-  lineHeight: '24px',
-  margin: '8px 0',
-};
-
-const warningBox = {
-  backgroundColor: '#fffbeb',
-  border: '1px solid #fbbf24',
-  borderRadius: '6px',
-  padding: '16px',
-  margin: '24px 0',
-};
-
-const warningText = {
-  color: '#92400e',
-  fontSize: '15px',
-  margin: '0',
-  textAlign: 'center' as const,
-};
-
-const tipsText = {
-  color: '#525252',
-  fontSize: '14px',
-  lineHeight: '20px',
-  margin: '24px 0',
-  fontStyle: 'italic',
 };
 
 const footer = {
@@ -352,7 +323,6 @@ const footer = {
 const footerText = {
   color: '#737373',
   fontSize: '14px',
-  lineHeight: '20px',
   margin: '8px 0',
 };
 
@@ -364,5 +334,4 @@ const footerLinks = {
 const footerLink = {
   color: '#0066CC',
   textDecoration: 'underline',
-  padding: '0 4px',
 };
