@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Sparkles, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,12 @@ export const AddDestinationDialog = ({
   const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
   const [threshold, setThreshold] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [aiRecommendation, setAiRecommendation] = useState<{
+    threshold: number;
+    reasoning: string;
+    confidence: string;
+  } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -111,9 +118,41 @@ export const AddDestinationDialog = ({
     }
   };
 
-  const handleSelectDestination = (dest: Destination) => {
+  const handleSelectDestination = async (dest: Destination) => {
     setSelectedDestination(dest);
-    setThreshold(Math.round(dest.average_price * 0.8));
+    setLoadingAI(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('recommend-threshold', {
+        body: { destination_id: dest.id }
+      });
+
+      if (error) throw error;
+
+      setAiRecommendation({
+        threshold: data.recommended_threshold,
+        reasoning: data.reasoning,
+        confidence: data.confidence,
+      });
+      setThreshold(data.recommended_threshold);
+      
+      toast({
+        title: '✨ AI Recommendation Ready',
+        description: data.reasoning,
+      });
+    } catch (error) {
+      console.error('Error getting AI recommendation:', error);
+      // Fallback to simple calculation
+      const fallbackThreshold = Math.round(dest.average_price * 0.75);
+      setThreshold(fallbackThreshold);
+      setAiRecommendation({
+        threshold: fallbackThreshold,
+        reasoning: 'Using default calculation (75% of average price)',
+        confidence: 'low',
+      });
+    } finally {
+      setLoadingAI(false);
+    }
   };
 
   const handleAdd = async () => {
@@ -216,10 +255,32 @@ export const AddDestinationDialog = ({
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Alert me when price drops below:</Label>
-                <div className="text-2xl font-bold">${threshold}</div>
-              </div>
+              {loadingAI ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>AI analyzing price patterns...</span>
+                </div>
+              ) : (
+                <>
+                  {aiRecommendation && (
+                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">AI Recommendation</span>
+                        <Badge variant={aiRecommendation.confidence === 'high' ? 'default' : 'secondary'} className="text-xs">
+                          {aiRecommendation.confidence} confidence
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">{aiRecommendation.reasoning}</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <Label>Alert me when price drops below:</Label>
+                    <div className="text-2xl font-bold">${threshold}</div>
+                  </div>
+                </>
+              )}
 
               <Slider
                 value={[threshold]}

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import type { SelectedDestination } from '@/pages/Onboarding';
 
 interface OnboardingThresholdsProps {
@@ -14,6 +17,14 @@ interface OnboardingThresholdsProps {
 
 export const OnboardingThresholds = ({ selectedDestinations, onNext, onBack }: OnboardingThresholdsProps) => {
   const [destinations, setDestinations] = useState(selectedDestinations);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState<Record<string, { threshold: number; reasoning: string; confidence: string }>>({});
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Automatically get AI recommendations when component mounts
+    getAIRecommendations();
+  }, []);
 
   const updateThreshold = (id: string, threshold: number) => {
     setDestinations(prev => 
@@ -21,13 +32,78 @@ export const OnboardingThresholds = ({ selectedDestinations, onNext, onBack }: O
     );
   };
 
-  const useSmartDefaults = () => {
-    setDestinations(prev => 
-      prev.map(dest => ({
-        ...dest,
-        threshold: Math.round((dest.average_price || 500) * 0.8)
-      }))
-    );
+  const getAIRecommendations = async () => {
+    setLoadingAI(true);
+    const recommendations: Record<string, { threshold: number; reasoning: string; confidence: string }> = {};
+
+    try {
+      // Get AI recommendations for all destinations in parallel
+      const promises = destinations.map(async (dest) => {
+        try {
+          const { data, error } = await supabase.functions.invoke('recommend-threshold', {
+            body: { destination_id: dest.id }
+          });
+
+          if (error) throw error;
+
+          return {
+            id: dest.id,
+            threshold: data.recommended_threshold,
+            reasoning: data.reasoning,
+            confidence: data.confidence,
+          };
+        } catch (err) {
+          console.error(`Failed to get AI recommendation for ${dest.city_name}:`, err);
+          return {
+            id: dest.id,
+            threshold: Math.round((dest.average_price || 500) * 0.75),
+            reasoning: 'Using default calculation (75% of average price)',
+            confidence: 'low',
+          };
+        }
+      });
+
+      const results = await Promise.all(promises);
+      
+      results.forEach(result => {
+        recommendations[result.id] = {
+          threshold: result.threshold,
+          reasoning: result.reasoning,
+          confidence: result.confidence,
+        };
+      });
+
+      setAiRecommendations(recommendations);
+
+      // Auto-apply AI recommendations
+      setDestinations(prev =>
+        prev.map(dest => ({
+          ...dest,
+          threshold: recommendations[dest.id]?.threshold || dest.threshold
+        }))
+      );
+
+      toast({
+        title: '✨ AI Recommendations Ready',
+        description: 'Smart thresholds calculated based on historical price patterns',
+      });
+    } catch (error) {
+      console.error('Error getting AI recommendations:', error);
+      toast({
+        title: 'Using default thresholds',
+        description: 'AI recommendations unavailable, using smart defaults',
+        variant: 'destructive',
+      });
+      // Fallback to simple calculation
+      setDestinations(prev =>
+        prev.map(dest => ({
+          ...dest,
+          threshold: Math.round((dest.average_price || 500) * 0.75)
+        }))
+      );
+    } finally {
+      setLoadingAI(false);
+    }
   };
 
   return (
@@ -42,9 +118,23 @@ export const OnboardingThresholds = ({ selectedDestinations, onNext, onBack }: O
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <div className="flex justify-end">
-              <Button onClick={useSmartDefaults} variant="outline" size="sm">
-                Use smart defaults for all
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium">AI-Optimized Thresholds</span>
+              </div>
+              <Button onClick={getAIRecommendations} variant="outline" size="sm" disabled={loadingAI}>
+                {loadingAI ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Recalculate AI Thresholds
+                  </>
+                )}
               </Button>
             </div>
 
@@ -54,19 +144,34 @@ export const OnboardingThresholds = ({ selectedDestinations, onNext, onBack }: O
                 const minPrice = Math.round(avgPrice * 0.5);
                 const maxPrice = Math.round(avgPrice * 1.5);
                 
+                const aiRec = aiRecommendations[dest.id];
+                
                 return (
                   <div key={dest.id} className="p-4 rounded-lg border bg-card">
                     <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          {dest.city_name}, {dest.country}
-                        </h3>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-lg">
+                            {dest.city_name}, {dest.country}
+                          </h3>
+                          {aiRec && (
+                            <Badge variant={aiRec.confidence === 'high' ? 'default' : 'secondary'} className="text-xs">
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              AI {aiRec.confidence}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           Average price: ${Math.round(avgPrice)}
                         </p>
+                        {aiRec && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">
+                            {aiRec.reasoning}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
-                        <div className="text-sm text-muted-foreground mb-1">Alert me when below:</div>
+                        <div className="text-sm text-muted-foreground mb-1">Alert when below:</div>
                         <Input
                           type="number"
                           value={dest.threshold}
