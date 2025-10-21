@@ -277,8 +277,9 @@ serve(async (req) => {
         const adminMinPriceDrop = adminSettings?.find(s => s.setting_key === "alert_min_price_drop")?.setting_value || 5;
 
         // Check if we have enough price history (false positive prevention)
-        if (!stats || (stats.total_samples || 0) < 7) {
-          console.log(`Insufficient price history for ${destination.city_name} (${stats?.total_samples || 0} samples)`);
+        // Reduced to 3 samples for faster alert generation
+        if (!stats || (stats.total_samples || 0) < 3) {
+          console.log(`Insufficient price history for ${destination.city_name} (${stats?.total_samples || 0} samples, need at least 3)`);
           continue;
         }
 
