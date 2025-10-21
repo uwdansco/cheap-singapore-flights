@@ -20,18 +20,24 @@ const TestAlerts = () => {
       
       toast.info("Starting price check... This may take a few minutes");
       
-      const { data, error } = await supabase.functions.invoke('check-flight-prices');
+      const { data, error } = await supabase.functions.invoke('check-flight-prices', {
+        body: {}
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to check prices');
+      }
 
+      console.log('Price check response:', data);
       setResults(data);
-      toast.success(`Price check complete! ${data.alertsTriggered || 0} alerts triggered`);
+      toast.success(`Price check complete! ${data?.alertsTriggered || 0} alerts triggered`);
       
       // Refresh data
       await Promise.all([fetchEmailQueueStats(), fetchPriceComparison()]);
     } catch (error: any) {
       console.error('Error triggering price check:', error);
-      toast.error(`Failed to trigger price check: ${error.message}`);
+      toast.error(`Failed to check prices: ${error.message || 'Unknown error'}`);
     } finally {
       setIsTriggeringPriceCheck(false);
     }
