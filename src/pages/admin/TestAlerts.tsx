@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Send, RefreshCw } from "lucide-react";
+import { Loader2, Send, RefreshCw, Target } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const TestAlerts = () => {
@@ -11,6 +11,7 @@ const TestAlerts = () => {
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [emailQueueStats, setEmailQueueStats] = useState<any>(null);
+  const [priceComparisonData, setPriceComparisonData] = useState<any[]>([]);
 
   const handleTriggerPriceCheck = async () => {
     try {
@@ -26,8 +27,8 @@ const TestAlerts = () => {
       setResults(data);
       toast.success(`Price check complete! ${data.alertsTriggered || 0} alerts triggered`);
       
-      // Refresh email queue stats
-      await fetchEmailQueueStats();
+      // Refresh data
+      await Promise.all([fetchEmailQueueStats(), fetchPriceComparison()]);
     } catch (error: any) {
       console.error('Error triggering price check:', error);
       toast.error(`Failed to trigger price check: ${error.message}`);
@@ -48,7 +49,6 @@ const TestAlerts = () => {
 
       toast.success(`Email queue processed! ${data.emailsSent || 0} emails sent`);
       
-      // Refresh email queue stats
       await fetchEmailQueueStats();
     } catch (error: any) {
       console.error('Error processing email queue:', error);
@@ -60,58 +60,101 @@ const TestAlerts = () => {
 
   const fetchEmailQueueStats = async () => {
     try {
-      const { data: pending, error: pendingError } = await supabase
+      const { count: pendingCount } = await supabase
         .from('email_queue')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
-      const { data: sent, error: sentError } = await supabase
+      const { count: sentCount } = await supabase
         .from('email_queue')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'sent');
 
-      const { data: failed, error: failedError } = await supabase
+      const { count: failedCount } = await supabase
         .from('email_queue')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'failed');
 
-      if (!pendingError && !sentError && !failedError) {
-        setEmailQueueStats({
-          pending: pending || 0,
-          sent: sent || 0,
-          failed: failed || 0,
-        });
-      }
+      setEmailQueueStats({
+        pending: pendingCount || 0,
+        sent: sentCount || 0,
+        failed: failedCount || 0,
+      });
     } catch (error) {
       console.error('Error fetching email queue stats:', error);
     }
   };
 
-  const fetchRecentAlerts = async () => {
+  const fetchPriceComparison = async () => {
     try {
-      const { data, error } = await supabase
-        .from('price_alerts')
-        .select(`
-          *,
-          destinations (city_name, country)
-        `)
-        .order('sent_at', { ascending: false })
-        .limit(10);
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
 
-      if (error) throw error;
-      return data;
+      const { data: compData, error: compError } = await supabase
+        .from('user_destinations')
+        .select(`
+          price_threshold,
+          destinations (
+            city_name,
+            airport_code,
+            id
+          )
+        `)
+        .eq('is_active', true);
+
+      if (!compError && compData) {
+        const enriched = await Promise.all(
+          compData.map(async (item: any) => {
+            const dest = item.destinations;
+            
+            const { data: priceData } = await supabase
+              .from('price_history')
+              .select('price, checked_at')
+              .eq('destination_id', dest.id)
+              .order('checked_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const { data: statsData } = await supabase
+              .from('price_statistics')
+              .select('avg_90day, total_samples')
+              .eq('destination_id', dest.id)
+              .maybeSingle();
+
+            const latest_price = priceData?.price;
+            const alert_status = !latest_price 
+              ? 'No price data'
+              : latest_price <= item.price_threshold
+                ? '✅ TRIGGER'
+                : '❌ Above threshold';
+
+            return {
+              city_name: dest.city_name,
+              airport_code: dest.airport_code,
+              price_threshold: item.price_threshold,
+              latest_price,
+              checked_at: priceData?.checked_at,
+              avg_90day: statsData?.avg_90day,
+              total_samples: statsData?.total_samples || 0,
+              alert_status
+            };
+          })
+        );
+        
+        setPriceComparisonData(enriched);
+      }
     } catch (error) {
-      console.error('Error fetching recent alerts:', error);
-      return [];
+      console.error('Error fetching price comparison:', error);
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     fetchEmailQueueStats();
-  });
+    fetchPriceComparison();
+  }, []);
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl space-y-6">
+    <div className="container mx-auto p-6 max-w-6xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Test Alert System</h1>
         <p className="text-muted-foreground mt-2">
@@ -177,6 +220,78 @@ const TestAlerts = () => {
         </Card>
       </div>
 
+      {/* Price Comparison Table */}
+      {priceComparisonData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Price vs Threshold Comparison
+            </CardTitle>
+            <CardDescription>
+              Current prices compared to your alert thresholds
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Destination</th>
+                    <th className="text-right p-2">Latest Price</th>
+                    <th className="text-right p-2">Your Threshold</th>
+                    <th className="text-right p-2">90-Day Avg</th>
+                    <th className="text-center p-2">Samples</th>
+                    <th className="text-center p-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceComparisonData.map((row: any, index: number) => (
+                    <tr key={index} className="border-b hover:bg-muted/50">
+                      <td className="p-2 font-medium">
+                        {row.city_name} ({row.airport_code})
+                      </td>
+                      <td className="p-2 text-right">
+                        {row.latest_price ? `$${row.latest_price}` : '-'}
+                      </td>
+                      <td className="p-2 text-right font-semibold text-primary">
+                        ${row.price_threshold}
+                      </td>
+                      <td className="p-2 text-right text-muted-foreground">
+                        {row.avg_90day ? `$${parseFloat(row.avg_90day).toFixed(0)}` : '-'}
+                      </td>
+                      <td className="p-2 text-center text-muted-foreground">
+                        {row.total_samples}
+                      </td>
+                      <td className="p-2 text-center">
+                        <span className={
+                          row.alert_status.includes('✅') 
+                            ? 'text-green-600 font-semibold' 
+                            : row.alert_status.includes('❌')
+                              ? 'text-red-600'
+                              : 'text-muted-foreground'
+                        }>
+                          {row.alert_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 text-sm text-muted-foreground">
+              <p><strong>Note:</strong> Alerts are only triggered when:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Current price is <strong>below</strong> your threshold</li>
+                <li>Deal quality meets minimum requirements (default: "good")</li>
+                <li>Cooldown period has passed (default: 7 days)</li>
+                <li>At least 7 price samples exist for the destination</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {emailQueueStats && (
         <Card>
           <CardHeader>
@@ -235,9 +350,9 @@ const TestAlerts = () => {
                               {result.quality}
                             </span>
                           )}
-                          {result.savings && (
-                            <span className="ml-2 text-green-600">
-                              {result.savings}% savings
+                          {result.savings !== undefined && (
+                            <span className={`ml-2 ${result.savings > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {result.savings}% {result.savings > 0 ? 'savings' : 'above avg'}
                             </span>
                           )}
                         </div>
@@ -257,16 +372,16 @@ const TestAlerts = () => {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div>
-            <strong>1. Price Check:</strong> Runs every 2 hours via cron job (jobid 6). You can manually trigger it above.
+            <strong>1. Price Check:</strong> Runs every 2 hours via cron job. Fetches current prices from Amadeus API.
           </div>
           <div>
-            <strong>2. Alert Creation:</strong> When prices drop below user thresholds, alerts are created in the database and added to the email queue.
+            <strong>2. Alert Criteria:</strong> Price must be below threshold, meet quality level, have 7+ samples, and respect cooldown.
           </div>
           <div>
-            <strong>3. Email Processing:</strong> Runs every 5 minutes via cron job (jobid 5). Sends pending emails from the queue.
+            <strong>3. Email Queue:</strong> Alerts are added to queue, then processed every 5 minutes by cron job.
           </div>
           <div>
-            <strong>4. Alert Criteria:</strong> Price must be below threshold, meet minimum quality level, respect cooldown period, and not exceed weekly limits.
+            <strong>4. Recommendations:</strong> Set thresholds above current average prices to receive test alerts.
           </div>
         </CardContent>
       </Card>
