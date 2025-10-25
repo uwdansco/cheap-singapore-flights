@@ -176,7 +176,7 @@ const Hero = () => {
           </p>
 
           {/* Email Signup Form */}
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4">
+          <form id="subscribe" onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4 scroll-mt-20">
             <div className="flex flex-col sm:flex-row gap-3 p-2 bg-card rounded-xl shadow-xl">
               <Input
                 type="text"
