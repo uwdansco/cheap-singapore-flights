@@ -121,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`Sending ${item.email_type} email to ${userEmail} with subject: ${emailSubject}`);
         
         const { data: sendData, error: sendError } = await resend.emails.send({
-          from: "Cheap Atlanta Flights <deals@updates.lovable.app>",
+          from: "Cheap Atlanta Flights <onboarding@resend.dev>",
           to: [userEmail],
           subject: emailSubject,
           html: emailHtml,
