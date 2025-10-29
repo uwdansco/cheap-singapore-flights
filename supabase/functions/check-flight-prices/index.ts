@@ -395,14 +395,17 @@ serve(async (req) => {
           }
 
           // Queue email notification
-          await supabase.rpc("queue_email", {
+          const emailResult = await supabase.rpc("queue_email", {
             p_user_id: userDest.user_id,
             p_email_type: "price_alert",
             p_email_data: {
-              destination_city: destination.city_name,
-              destination_country: destination.country,
-              current_price: price,
-              user_threshold: userDest.price_threshold,
+              destination: {
+                city_name: destination.city_name,
+                country: destination.country,
+                average_price: stats.avg_90day || price * 1.2
+              },
+              price: price,
+              threshold: userDest.price_threshold,
               outbound_date: departureDate,
               return_date: returnDate,
               booking_link: bookingLink,
@@ -415,6 +418,12 @@ serve(async (req) => {
               current_percentile: dealClassification.currentPercentile
             }
           });
+
+          if (emailResult.error) {
+            console.error("Error queuing email:", emailResult.error);
+          } else {
+            console.log(`✉️ Email queued for user ${userDest.user_id}`);
+          }
 
           // Update last alert sent time
           await supabase

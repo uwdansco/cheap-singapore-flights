@@ -90,6 +90,8 @@ const handler = async (req: Request): Promise<Response> => {
 
           case "price_alert": {
             const data = item.email_data;
+            console.log(`Processing price alert for ${data.destination?.city_name || 'unknown destination'}`);
+            
             emailSubject = `✈️ Price Alert: Atlanta to ${data.destination.city_name} - Now $${Math.round(data.price)}!`;
             
             const trackingBookingLink = `${supabaseUrl}/functions/v1/track-email-click?queue_id=${item.id}&url=${encodeURIComponent(data.booking_link)}`;
@@ -116,14 +118,21 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Send email via Resend
-        const { error: sendError } = await resend.emails.send({
+        console.log(`Sending ${item.email_type} email to ${userEmail} with subject: ${emailSubject}`);
+        
+        const { data: sendData, error: sendError } = await resend.emails.send({
           from: "Cheap Atlanta Flights <deals@updates.lovable.app>",
           to: [userEmail],
           subject: emailSubject,
           html: emailHtml,
         });
 
-        if (sendError) throw sendError;
+        if (sendError) {
+          console.error(`Resend error for ${userEmail}:`, sendError);
+          throw sendError;
+        }
+        
+        console.log(`✅ Email sent successfully to ${userEmail}, message ID: ${sendData?.id}`);
 
         // Mark as sent
         await supabase
