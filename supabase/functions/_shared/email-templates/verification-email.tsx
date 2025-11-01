@@ -1,15 +1,3 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Text,
-} from 'https://esm.sh/@react-email/components@0.0.22';
 import * as React from 'https://esm.sh/react@18.3.1';
 
 interface VerificationEmailProps {
@@ -18,67 +6,72 @@ interface VerificationEmailProps {
   unsubscribeUrl: string;
 }
 
+// Simple HTML email template without react-email components
 export const VerificationEmail = ({
   verificationUrl,
   email,
   unsubscribeUrl,
-}: VerificationEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Confirm your subscription to Cheap Atlanta Flights</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        {/* Header */}
-        <Section style={header}>
-          <Heading style={h1}>✈️ Cheap Atlanta Flights</Heading>
-        </Section>
+}: VerificationEmailProps) => {
+  return (
+    <html>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </head>
+      <body style={main}>
+        <div style={container}>
+          {/* Header */}
+          <div style={header}>
+            <h1 style={h1}>✈️ Cheap Atlanta Flights</h1>
+          </div>
 
-        {/* Main Content */}
-        <Section style={content}>
-          <Heading style={h2}>Welcome to Cheap Atlanta Flights!</Heading>
-          <Text style={paragraph}>
-            Thanks for subscribing! We're excited to help you find the best flight deals from Atlanta.
-          </Text>
-          <Text style={paragraph}>
-            Click the button below to confirm your email address and start receiving daily deal alerts:
-          </Text>
+          {/* Main Content */}
+          <div style={content}>
+            <h2 style={h2}>Welcome to Cheap Atlanta Flights!</h2>
+            <p style={paragraph}>
+              Thanks for subscribing! We're excited to help you find the best flight deals from Atlanta.
+            </p>
+            <p style={paragraph}>
+              Click the button below to confirm your email address and start receiving daily deal alerts:
+            </p>
 
-          <Section style={buttonContainer}>
-            <Button style={button} href={verificationUrl}>
-              Verify Email Address
-            </Button>
-          </Section>
+            <div style={buttonContainer}>
+              <a style={button} href={verificationUrl}>
+                Verify Email Address
+              </a>
+            </div>
 
-          <Text style={paragraph}>
-            Or copy and paste this URL into your browser:
-          </Text>
-          <Text style={link}>
-            <Link href={verificationUrl} style={linkText}>
-              {verificationUrl}
-            </Link>
-          </Text>
+            <p style={paragraph}>
+              Or copy and paste this URL into your browser:
+            </p>
+            <p style={link}>
+              <a href={verificationUrl} style={linkText}>
+                {verificationUrl}
+              </a>
+            </p>
 
-          <Text style={smallText}>
-            This link will expire in 24 hours. If you didn't subscribe to Cheap Atlanta Flights,
-            you can safely ignore this email.
-          </Text>
-        </Section>
+            <p style={smallText}>
+              This link will expire in 24 hours. If you didn't subscribe to Cheap Atlanta Flights,
+              you can safely ignore this email.
+            </p>
+          </div>
 
-        {/* Footer */}
-        <Section style={footer}>
-          <Text style={footerText}>
-            Cheap Atlanta Flights - Your source for the best flight deals from ATL
-          </Text>
-          <Text style={footerText}>
-            <Link href={unsubscribeUrl} style={footerLink}>
-              Unsubscribe
-            </Link>
-          </Text>
-        </Section>
-      </Container>
-    </Body>
-  </Html>
-);
+          {/* Footer */}
+          <div style={footer}>
+            <p style={footerText}>
+              Cheap Atlanta Flights - Your source for the best flight deals from ATL
+            </p>
+            <p style={footerText}>
+              <a href={unsubscribeUrl} style={footerLink}>
+                Unsubscribe
+              </a>
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  );
+};
 
 export default VerificationEmail;
 
