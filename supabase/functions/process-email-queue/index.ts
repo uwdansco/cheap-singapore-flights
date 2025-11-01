@@ -129,8 +129,11 @@ const handler = async (req: Request): Promise<Response> => {
         // Send email via Resend with deliverability headers
         console.log(`Sending ${item.email_type} email to ${userEmail} with subject: ${emailSubject}`);
         
+        // Get custom email domain from environment (or use default Resend domain)
+        const emailFrom = Deno.env.get("EMAIL_FROM") || "Cheap Atlanta Flights <onboarding@resend.dev>";
+        
         const { data: sendData, error: sendError } = await resend.emails.send({
-          from: "Cheap Atlanta Flights <onboarding@resend.dev>",
+          from: emailFrom,
           to: [userEmail],
           subject: emailSubject,
           html: emailHtml,

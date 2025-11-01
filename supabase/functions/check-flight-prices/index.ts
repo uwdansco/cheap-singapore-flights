@@ -82,9 +82,24 @@ async function searchFlights(
     },
   });
 
+  // Monitor rate limits
+  const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining");
+  const rateLimitReset = response.headers.get("X-RateLimit-Reset");
+  
+  if (rateLimitRemaining) {
+    console.log(`⚠️ Amadeus API Rate Limit: ${rateLimitRemaining} requests remaining`);
+    if (parseInt(rateLimitRemaining) < 100) {
+      console.warn(`⚠️ WARNING: Low rate limit - only ${rateLimitRemaining} requests remaining. Reset at: ${rateLimitReset}`);
+    }
+  }
+
   if (!response.ok) {
+    if (response.status === 429) {
+      console.error(`🚨 RATE LIMIT EXCEEDED for ${destination}. Will retry later. Reset at: ${rateLimitReset}`);
+      return null;
+    }
     const error = await response.text();
-    console.error(`Amadeus flight search error for ${destination}:`, error);
+    console.error(`Amadeus flight search error for ${destination} (${response.status}):`, error);
     return null;
   }
 
