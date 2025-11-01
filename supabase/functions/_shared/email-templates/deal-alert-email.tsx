@@ -66,7 +66,9 @@ export const DealAlertEmail = ({
 
   return (
     <Html>
-      <Head />
+      <Head>
+        <title>Flight Price Alert</title>
+      </Head>
       <Preview>🎉 {deal_quality} Deal: Atlanta to {destination_city} - ${Math.round(current_price).toString()}</Preview>
       <Body style={main}>
         <Container style={container}>
@@ -76,11 +78,9 @@ export const DealAlertEmail = ({
           </Section>
 
           <Section style={heroSection}>
-            <Img
-              src={`https://source.unsplash.com/800x400/?${destination_city},travel,city`}
-              alt={destination_city}
-              style={heroImage}
-            />
+            <Text style={heroText}>
+              ✈️ Your flight to {destination_city} just got cheaper!
+            </Text>
           </Section>
 
           <Section style={content}>
@@ -143,8 +143,11 @@ export const DealAlertEmail = ({
 
             <Section style={buttonContainer}>
               <Button style={button} href={booking_link}>
-                Book This Deal Now
+                🎫 View Flights on Google →
               </Button>
+              <Text style={ctaSubtext}>
+                Click to search flights with your dates pre-filled
+              </Text>
             </Section>
           </Section>
 
@@ -199,8 +202,18 @@ const dealBadge = {
   margin: '0',
 };
 
-const heroSection = { padding: '0' };
-const heroImage = { width: '100%', height: 'auto', display: 'block' };
+const heroSection = { 
+  padding: '24px 48px',
+  backgroundColor: '#f0f9ff',
+  textAlign: 'center' as const,
+};
+
+const heroText = {
+  color: '#1E40AF',
+  fontSize: '20px',
+  fontWeight: 'bold',
+  margin: '0',
+};
 const content = { padding: '32px 48px' };
 
 const destinationHeading = {
@@ -334,4 +347,11 @@ const footerLinks = {
 const footerLink = {
   color: '#0066CC',
   textDecoration: 'underline',
+};
+
+const ctaSubtext = {
+  color: '#737373',
+  fontSize: '14px',
+  margin: '12px 0 0',
+  textAlign: 'center' as const,
 };

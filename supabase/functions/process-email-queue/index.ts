@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
+import React from "https://esm.sh/react@18.3.1";
+import { renderAsync } from "https://esm.sh/@react-email/components@0.0.22";
+import { DealAlertEmail } from "../_shared/email-templates/deal-alert-email.tsx";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -92,23 +95,33 @@ const handler = async (req: Request): Promise<Response> => {
             const data = item.email_data;
             console.log(`Processing price alert for ${data.destination?.city_name || 'unknown destination'}`);
             
-            emailSubject = `✈️ Price Alert: Atlanta to ${data.destination.city_name} - Now $${Math.round(data.price)}!`;
+            emailSubject = `✈️ ${data.deal_quality || 'Price Alert'}: Atlanta to ${data.destination.city_name} - Now $${Math.round(data.price)}!`;
             
             const trackingBookingLink = `${supabaseUrl}/functions/v1/track-email-click?queue_id=${item.id}&url=${encodeURIComponent(data.booking_link)}`;
             
-            emailHtml = generatePriceAlertEmail({
-              name: userName,
-              destination: data.destination,
-              price: data.price,
-              threshold: data.threshold,
-              outbound_date: data.outbound_date,
-              return_date: data.return_date,
-              booking_link: trackingBookingLink,
-              dashboardUrl: `${baseUrl}/dashboard`,
-              pauseUrl: `${baseUrl}/dashboard/destinations`,
-              unsubscribeUrl: `${baseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}`,
-              trackingPixelUrl,
-            });
+            // Use React Email template
+            emailHtml = await renderAsync(
+              React.createElement(DealAlertEmail, {
+                destination_city: data.destination.city_name,
+                destination_country: data.destination.country,
+                current_price: data.price,
+                user_threshold: data.threshold,
+                outbound_date: data.outbound_date,
+                return_date: data.return_date,
+                booking_link: trackingBookingLink,
+                unsubscribeUrl: `${baseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}`,
+                deal_quality: data.deal_quality,
+                savings_percent: data.savings_percent,
+                recommendation: data.recommendation,
+                urgency: data.urgency,
+                avg_90day: data.avg_90day,
+                all_time_low: data.all_time_low,
+                current_percentile: data.current_percentile,
+              })
+            );
+            
+            // Add tracking pixel
+            emailHtml += `<img src="${trackingPixelUrl}" width="1" height="1" alt="" style="display:block" />`;
             break;
           }
 
@@ -117,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
             continue;
         }
 
-        // Send email via Resend
+        // Send email via Resend with deliverability headers
         console.log(`Sending ${item.email_type} email to ${userEmail} with subject: ${emailSubject}`);
         
         const { data: sendData, error: sendError } = await resend.emails.send({
@@ -125,6 +138,10 @@ const handler = async (req: Request): Promise<Response> => {
           to: [userEmail],
           subject: emailSubject,
           html: emailHtml,
+          headers: {
+            'X-Entity-Ref-ID': item.id,
+            'List-Unsubscribe': `<${baseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}>`,
+          },
         });
 
         if (sendError) {
@@ -185,7 +202,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-// Simple HTML email templates
+// Simple HTML email template for welcome emails
 function generateWelcomeEmail(props: any): string {
   return `
 <!DOCTYPE html>
@@ -193,6 +210,7 @@ function generateWelcomeEmail(props: any): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Cheap Atlanta Flights</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
@@ -244,86 +262,6 @@ function generateWelcomeEmail(props: any): string {
       </p>
     </div>
   </div>
-</body>
-</html>
-  `;
-}
-
-function generatePriceAlertEmail(props: any): string {
-  const savings = props.threshold - props.price;
-  const percentBelow = Math.round(
-    ((props.destination.average_price - props.price) / props.destination.average_price) * 100
-  );
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
-    <div style="background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); padding: 32px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 32px;">🎯 PRICE ALERT!</h1>
-    </div>
-    
-    <div style="padding: 32px;">
-      <h2 style="color: #1E40AF; margin: 0 0 16px;">Hi ${props.name},</h2>
-      
-      <p style="color: #333; font-size: 16px; line-height: 24px;">
-        Great news! The price for flights from Atlanta to <strong>${props.destination.city_name}, ${props.destination.country}</strong> just dropped!
-      </p>
-
-      <div style="background-color: #fff7ed; border: 3px solid #F97316; border-radius: 12px; padding: 24px; margin: 24px 0;">
-        <div style="display: flex; justify-content: space-between; margin: 12px 0;">
-          <span style="color: #666;">Price dropped to:</span>
-          <span style="color: #15803d; font-size: 32px; font-weight: bold;">$${Math.round(props.price)}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin: 12px 0;">
-          <span style="color: #666;">Your threshold:</span>
-          <span style="font-size: 18px;">$${Math.round(props.threshold)}</span>
-        </div>
-        <hr style="border-color: #F97316; margin: 16px 0;">
-        <div style="display: flex; justify-content: space-between; margin: 12px 0;">
-          <span style="color: #15803d; font-weight: bold;">You save:</span>
-          <span style="color: #15803d; font-size: 24px; font-weight: bold;">$${Math.round(savings)}</span>
-        </div>
-      </div>
-
-      ${props.outbound_date || props.return_date ? `
-      <div style="background-color: #f8f9fa; border-radius: 8px; padding: 16px; margin: 24px 0;">
-        <h3 style="color: #1E40AF; margin: 0 0 8px;">Flight Details</h3>
-        ${props.outbound_date ? `<p style="margin: 8px 0;"><strong>Outbound:</strong> ${props.outbound_date}</p>` : ''}
-        ${props.return_date ? `<p style="margin: 8px 0;"><strong>Return:</strong> ${props.return_date}</p>` : ''}
-        <p style="color: #666; font-size: 12px; margin: 12px 0 0;">💡 Tip: Flexible dates? Check nearby dates for even better prices!</p>
-      </div>
-      ` : ''}
-
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${props.booking_link}" style="background-color: #F97316; color: #ffffff; text-decoration: none; padding: 16px 48px; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 18px;">
-          View Flights & Book Now ✈️
-        </a>
-      </div>
-
-      <div style="background-color: #eff6ff; border-left: 4px solid #1E40AF; padding: 16px; margin: 24px 0;">
-        <p style="margin: 4px 0;">📊 This is <strong>${percentBelow}% below</strong> the average price of $${Math.round(props.destination.average_price)}</p>
-        <p style="color: #dc2626; margin: 12px 0 0; font-weight: 500;">⚠️ Prices can change quickly. Book soon to lock in this deal!</p>
-      </div>
-    </div>
-
-    <div style="background-color: #f6f9fc; padding: 24px; text-align: center;">
-      <p style="color: #8898aa; font-size: 12px; margin: 4px 0;">
-        <a href="${props.dashboardUrl}" style="color: #1E40AF;">Manage Destinations</a> |
-        <a href="${props.pauseUrl}" style="color: #1E40AF;">Pause Alerts for ${props.destination.city_name}</a> |
-        <a href="${props.unsubscribeUrl}" style="color: #1E40AF;">Unsubscribe</a>
-      </p>
-      <p style="color: #8898aa; font-size: 12px; margin: 4px 0;">
-        © 2025 Cheap Atlanta Flights. All rights reserved.
-      </p>
-    </div>
-  </div>
-  <img src="${props.trackingPixelUrl}" width="1" height="1" alt="" />
 </body>
 </html>
   `;
