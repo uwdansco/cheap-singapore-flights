@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
 import React from 'https://esm.sh/react@18.3.1';
-import { render } from 'https://esm.sh/@react-email/render@0.0.10';
+import { renderAsync } from 'https://esm.sh/@react-email/render@0.0.10';
 import { VerificationEmail } from '../_shared/email-templates/verification-email.tsx';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -88,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
     const unsubscribeUrl = `${siteUrl}/unsubscribe`;
 
     // Render React Email template
-    const emailHtml = render(
+    const emailHtml = await renderAsync(
       React.createElement(VerificationEmail, {
         verificationUrl,
         email,
