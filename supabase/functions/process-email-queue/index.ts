@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
-import React from "https://esm.sh/react@18.3.1";
+import * as React from "https://esm.sh/react@18.3.1";
 import { renderAsync } from "https://esm.sh/@react-email/components@0.0.22";
 import { DealAlertEmail } from "../_shared/email-templates/deal-alert-email.tsx";
 
@@ -99,29 +99,25 @@ const handler = async (req: Request): Promise<Response> => {
             
             const trackingBookingLink = `${supabaseUrl}/functions/v1/track-email-click?queue_id=${item.id}&url=${encodeURIComponent(data.booking_link)}`;
             
-            // Use React Email template
-            emailHtml = await renderAsync(
-              React.createElement(DealAlertEmail, {
-                destination_city: data.destination.city_name,
-                destination_country: data.destination.country,
-                current_price: data.price,
-                user_threshold: data.threshold,
-                outbound_date: data.outbound_date,
-                return_date: data.return_date,
-                booking_link: trackingBookingLink,
-                unsubscribeUrl: `${baseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}`,
-                deal_quality: data.deal_quality,
-                savings_percent: data.savings_percent,
-                recommendation: data.recommendation,
-                urgency: data.urgency,
-                avg_90day: data.avg_90day,
-                all_time_low: data.all_time_low,
-                current_percentile: data.current_percentile,
-              })
-            );
-            
-            // Add tracking pixel
-            emailHtml += `<img src="${trackingPixelUrl}" width="1" height="1" alt="" style="display:block" />`;
+            // Use improved HTML template with React Email styling
+            emailHtml = generatePriceAlertEmailV2({
+              name: userName,
+              destination: data.destination,
+              price: data.price,
+              threshold: data.threshold,
+              outbound_date: data.outbound_date,
+              return_date: data.return_date,
+              booking_link: trackingBookingLink,
+              dashboardUrl: `${baseUrl}/dashboard`,
+              unsubscribeUrl: `${baseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}`,
+              trackingPixelUrl,
+              deal_quality: data.deal_quality,
+              savings_percent: data.savings_percent,
+              recommendation: data.recommendation,
+              urgency: data.urgency,
+              avg_90day: data.avg_90day,
+              all_time_low: data.all_time_low,
+            });
             break;
           }
 
@@ -262,6 +258,139 @@ function generateWelcomeEmail(props: any): string {
       </p>
     </div>
   </div>
+</body>
+</html>
+  `;
+}
+
+// Enhanced price alert email with better styling
+function generatePriceAlertEmailV2(props: any): string {
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const savings = props.avg_90day ? Math.round(props.avg_90day - props.price) : 0;
+  const urgencyColor = props.urgency === 'high' ? '#dc2626' : props.urgency === 'moderate' ? '#f59e0b' : '#10b981';
+  const urgencyText = props.urgency === 'high' ? '🔴 HIGH URGENCY - Book within 24 hours' : 
+                      props.urgency === 'moderate' ? '🟡 MODERATE - Book within 3 days' : 
+                      '🟢 LOW - You have time to consider';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Price Alert</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%); padding: 24px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0 0 8px; font-size: 24px; font-weight: bold;">✈️ Cheap Atlanta Flights</h1>
+      <div style="background-color: #FF6B35; color: #ffffff; display: inline-block; font-size: 14px; font-weight: bold; padding: 6px 16px; border-radius: 20px; margin: 0;">
+        ${props.deal_quality || 'GOOD DEAL'}
+      </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div style="padding: 24px 48px; background-color: #f0f9ff; text-align: center;">
+      <h2 style="color: #1E40AF; font-size: 20px; font-weight: bold; margin: 0;">
+        ✈️ Your flight to ${props.destination.city_name} just got cheaper!
+      </h2>
+    </div>
+
+    <!-- Content -->
+    <div style="padding: 32px 48px;">
+      <h2 style="color: #1E40AF; margin: 0 0 16px; font-size: 32px; font-weight: bold; text-align: center;">
+        Atlanta → ${props.destination.city_name}
+      </h2>
+      <p style="color: #737373; font-size: 18px; margin: 0 0 24px; text-align: center;">
+        ${props.destination.country}
+      </p>
+
+      <!-- Price Context Box -->
+      <div style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0;">
+        <p style="fontSize: 12px; font-weight: bold; color: #64748b; letter-spacing: 1px; margin-bottom: 12px;">
+          PRICE BREAKDOWN
+        </p>
+        <hr style="border-color: #e2e8f0; margin: 12px 0;">
+        <p style="font-size: 14px; color: #334155; margin: 8px 0;">
+          <strong>Current Price:</strong> <span style="color: #059669; font-size: 20px; font-weight: bold;">$${Math.round(props.price)}</span>
+        </p>
+        <p style="font-size: 14px; color: #334155; margin: 8px 0;">
+          <strong>Your Threshold:</strong> $${Math.round(props.threshold)}
+        </p>
+        ${props.avg_90day ? `
+        <p style="font-size: 14px; color: #334155; margin: 8px 0;">
+          <strong>90-Day Average:</strong> $${Math.round(props.avg_90day)}
+        </p>
+        ` : ''}
+        ${props.all_time_low ? `
+        <p style="font-size: 14px; color: #334155; margin: 8px 0;">
+          <strong>All-Time Low:</strong> $${Math.round(props.all_time_low)}
+        </p>
+        ` : ''}
+        ${savings > 0 ? `
+        <p style="font-size: 16px; margin: 12px 0; font-weight: bold;">
+          <strong>Your Savings:</strong> <span style="color: #059669; font-size: 18px;">$${savings} (${props.savings_percent}%)</span>
+        </p>
+        ` : ''}
+      </div>
+
+      <!-- Urgency Indicator -->
+      <div style="border: 2px solid ${urgencyColor}; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
+        <p style="font-size: 16px; font-weight: bold; margin: 0; color: ${urgencyColor};">${urgencyText}</p>
+      </div>
+
+      <!-- Recommendation -->
+      ${props.recommendation ? `
+      <p style="font-size: 15px; line-height: 24px; color: #475569; background-color: #fff7ed; padding: 16px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 20px 0;">
+        ${props.recommendation}
+      </p>
+      ` : ''}
+
+      <!-- Flight Details -->
+      <div style="background-color: #f0f9ff; border-radius: 8px; padding: 24px; margin: 24px 0;">
+        <p style="font-size: 16px; margin: 8px 0; color: #333333;">
+          <strong>✈️ Departure:</strong> ${formatDate(props.outbound_date)}
+        </p>
+        <p style="font-size: 16px; margin: 8px 0; color: #333333;">
+          <strong>🏠 Return:</strong> ${formatDate(props.return_date)}
+        </p>
+        <p style="font-size: 16px; margin: 8px 0; color: #333333;">
+          <strong>📍 From:</strong> Atlanta (ATL)
+        </p>
+      </div>
+
+      <!-- CTA Button -->
+      <div style="padding: 32px 0; text-align: center;">
+        <a href="${props.booking_link}" style="background-color: #FF6B35; border-radius: 8px; color: #ffffff; font-size: 18px; font-weight: bold; text-decoration: none; text-align: center; display: inline-block; padding: 16px 48px;">
+          🎫 View Flights on Google →
+        </a>
+        <p style="color: #737373; font-size: 14px; margin: 12px 0 0; text-align: center;">
+          Click to search flights with your dates pre-filled
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #f6f9fc; padding: 32px 48px; text-align: center;">
+      <p style="color: #737373; font-size: 14px; margin: 8px 0;">
+        You're receiving this because you subscribed to Cheap Atlanta Flights price alerts.
+      </p>
+      <p style="font-size: 14px; margin: 16px 0 0;">
+        <a href="${props.dashboardUrl}" style="color: #0066CC; text-decoration: underline;">Manage Destinations</a> |
+        <a href="${props.unsubscribeUrl}" style="color: #0066CC; text-decoration: underline;">Unsubscribe</a>
+      </p>
+    </div>
+  </div>
+  <img src="${props.trackingPixelUrl}" width="1" height="1" alt="" style="display:block" />
 </body>
 </html>
   `;
