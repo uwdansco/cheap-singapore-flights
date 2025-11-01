@@ -366,8 +366,8 @@ serve(async (req) => {
             continue;
           }
 
-          // All checks passed - create price alert
-          const bookingLink = `https://www.google.com/flights?hl=en#flt=${origin}.${destination.airport_code}.${departureDate}*${destination.airport_code}.${origin}.${returnDate}`;
+          // All checks passed - create price alert with Google Flights URL
+          const bookingLink = `https://www.google.com/travel/flights?q=flights+from+${origin}+to+${destination.airport_code}+on+${departureDate}+returning+${returnDate}`;
           
           const { error: alertError } = await supabase
             .from("price_alerts")
