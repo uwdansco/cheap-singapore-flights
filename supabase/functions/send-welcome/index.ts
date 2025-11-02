@@ -85,7 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send welcome email
     const emailResponse = await resend.emails.send({
-      from: "Cheap Atlanta Flights <onboarding@resend.dev>",
+      from: "Cheap Atlanta Flights <noreply@cheapatlantaflights.online>",
       to: [email],
       subject: "Welcome to Cheap Atlanta Flights! ✈️",
       html: emailHtml,

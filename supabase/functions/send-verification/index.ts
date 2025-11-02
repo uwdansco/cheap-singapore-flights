@@ -98,7 +98,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send verification email
     const emailResponse = await resend.emails.send({
-      from: "Cheap Atlanta Flights <onboarding@resend.dev>",
+      from: "Cheap Atlanta Flights <noreply@cheapatlantaflights.online>",
       to: [email],
       subject: "Confirm your subscription to Cheap Atlanta Flights",
       html: emailHtml,
