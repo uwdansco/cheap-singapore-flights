@@ -104,6 +104,11 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHtml,
     });
 
+    if (emailResponse.error) {
+      console.error("Resend API error:", emailResponse.error);
+      throw new Error(`Failed to send email: ${emailResponse.error.message}`);
+    }
+
     console.log("Verification email sent successfully:", emailResponse);
 
     return new Response(
