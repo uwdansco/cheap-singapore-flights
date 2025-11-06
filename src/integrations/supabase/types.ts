@@ -74,6 +74,68 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_guarantee_claims: {
+        Row: {
+          admin_notes: string | null
+          claim_status: Database["public"]["Enums"]["guarantee_claim_status"]
+          created_at: string | null
+          id: string
+          refund_amount_cents: number | null
+          refund_issued_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          stripe_refund_id: string | null
+          subscription_id: string
+          subscription_year_end: string
+          subscription_year_start: string
+          updated_at: string | null
+          user_id: string
+          user_statement: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          claim_status?: Database["public"]["Enums"]["guarantee_claim_status"]
+          created_at?: string | null
+          id?: string
+          refund_amount_cents?: number | null
+          refund_issued_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          stripe_refund_id?: string | null
+          subscription_id: string
+          subscription_year_end: string
+          subscription_year_start: string
+          updated_at?: string | null
+          user_id: string
+          user_statement?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          claim_status?: Database["public"]["Enums"]["guarantee_claim_status"]
+          created_at?: string | null
+          id?: string
+          refund_amount_cents?: number | null
+          refund_issued_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          stripe_refund_id?: string | null
+          subscription_id?: string
+          subscription_year_end?: string
+          subscription_year_start?: string
+          updated_at?: string | null
+          user_id?: string
+          user_statement?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_guarantee_claims_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           booking_link: string
@@ -498,6 +560,45 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          plan_name: string
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          price_cents: number
+          stripe_price_id: string
+          stripe_product_id: string
+          trial_days: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          plan_name: string
+          plan_type: Database["public"]["Enums"]["subscription_plan_type"]
+          price_cents: number
+          stripe_price_id: string
+          stripe_product_id: string
+          trial_days?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          plan_name?: string
+          plan_type?: Database["public"]["Enums"]["subscription_plan_type"]
+          price_cents?: number
+          stripe_price_id?: string
+          stripe_product_id?: string
+          trial_days?: number | null
+        }
+        Relationships: []
+      }
       user_destinations: {
         Row: {
           alert_cooldown_days: number
@@ -611,6 +712,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          is_grandfathered: boolean | null
+          plan_type:
+            | Database["public"]["Enums"]["subscription_plan_type"]
+            | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string
+          stripe_subscription_id: string | null
+          trial_end: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          is_grandfathered?: boolean | null
+          plan_type?:
+            | Database["public"]["Enums"]["subscription_plan_type"]
+            | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string
+          stripe_subscription_id?: string | null
+          trial_end?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          is_grandfathered?: boolean | null
+          plan_type?:
+            | Database["public"]["Enums"]["subscription_plan_type"]
+            | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string
+          stripe_subscription_id?: string | null
+          trial_end?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -644,6 +799,16 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      guarantee_claim_status: "pending" | "approved" | "rejected" | "refunded"
+      subscription_plan_type: "monthly" | "annual" | "grandfathered"
+      subscription_status:
+        | "active"
+        | "trialing"
+        | "past_due"
+        | "canceled"
+        | "incomplete"
+        | "incomplete_expired"
+        | "unpaid"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -772,6 +937,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      guarantee_claim_status: ["pending", "approved", "rejected", "refunded"],
+      subscription_plan_type: ["monthly", "annual", "grandfathered"],
+      subscription_status: [
+        "active",
+        "trialing",
+        "past_due",
+        "canceled",
+        "incomplete",
+        "incomplete_expired",
+        "unpaid",
+      ],
     },
   },
 } as const
