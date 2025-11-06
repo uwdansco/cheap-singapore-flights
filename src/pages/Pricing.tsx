@@ -8,8 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { SEO } from '@/components/SEO';
 
-const MONTHLY_PRICE_ID = 'price_monthly_499';
-const ANNUAL_PRICE_ID = 'price_annual_3999';
+const MONTHLY_PRICE_ID = 'price_1SQJu5Cm33gke1O8lp73P8iV'; // $4.99/month
+const ANNUAL_PRICE_ID = 'price_annual_3999'; // Placeholder - needs annual product creation
 
 const Pricing = () => {
   const navigate = useNavigate();

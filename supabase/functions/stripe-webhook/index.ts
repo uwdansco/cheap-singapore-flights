@@ -35,19 +35,23 @@ serve(async (req) => {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object;
-        const customer = await stripe.customers.retrieve(subscription.customer);
+        const customer = await stripe.customers.retrieve(subscription.customer) as any;
         
         if (customer.deleted) break;
 
-        // Find user by email
-        const { data: user } = await supabaseAdmin.auth.admin.getUserByEmail(
-          customer.email || ""
-        );
+        // Find user by customer ID in our subscriptions table
+        const { data: userSub } = await supabaseAdmin
+          .from("user_subscriptions")
+          .select("user_id")
+          .eq("stripe_customer_id", subscription.customer)
+          .single();
 
-        if (!user) {
-          console.error("User not found for email:", customer.email);
+        if (!userSub) {
+          console.error("User subscription not found for customer:", subscription.customer);
           break;
         }
+
+        const userId = userSub.user_id;
 
         // Determine plan type
         const priceId = subscription.items.data[0].price.id;
@@ -61,7 +65,7 @@ serve(async (req) => {
 
         // Upsert subscription
         await supabaseAdmin.from("user_subscriptions").upsert({
-          user_id: user.id,
+          user_id: userId,
           stripe_customer_id: subscription.customer,
           stripe_subscription_id: subscription.id,
           plan_type: planType,
@@ -74,7 +78,7 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         });
 
-        console.log("Subscription updated for user:", user.id);
+        console.log("Subscription updated for user:", userId);
         break;
       }
 
@@ -107,10 +111,10 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Webhook error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error?.message || "Unknown error" }),
       {
         headers: { "Content-Type": "application/json" },
         status: 400,

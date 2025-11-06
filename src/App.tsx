@@ -41,6 +41,9 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import About from "./pages/About";
 import HowItWorksPage from "./pages/HowItWorksPage";
+import Pricing from "./pages/Pricing";
+import BookingGuarantee from "./pages/dashboard/BookingGuarantee";
+import GuaranteeClaims from "./pages/admin/GuaranteeClaims";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +63,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/destinations" element={<Destinations />} />
             <Route path="/destinations/:slug" element={<DestinationDetail />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/about" element={<About />} />
@@ -92,6 +96,7 @@ const App = () => (
               <Route path="destinations" element={<MyDestinations />} />
               <Route path="alerts" element={<PriceAlerts />} />
               <Route path="settings" element={<AccountSettings />} />
+              <Route path="guarantee" element={<BookingGuarantee />} />
             </Route>
             
             {/* Admin Routes */}
@@ -104,6 +109,7 @@ const App = () => (
               <Route path="subscribers" element={<SubscribersPage />} />
               <Route path="destinations" element={<DestinationsPage />} />
               <Route path="deals" element={<DealsPage />} />
+              <Route path="guarantee-claims" element={<GuaranteeClaims />} />
               <Route path="send-email" element={<SendEmailPage />} />
               <Route path="monitoring" element={<PriceMonitoring />} />
               <Route path="test-alerts" element={<TestEmailAlerts />} />
