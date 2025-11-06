@@ -167,43 +167,26 @@ const Hero = () => {
 
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-            Get exclusive deals to the world's top destinations delivered straight to your inbox. 
+            Get real-time price alerts for your favorite destinations.
             <span className="font-semibold text-foreground"> Save hundreds on your next adventure.</span>
           </p>
 
-          {/* Email Signup Form */}
-          <form id="subscribe" onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4 scroll-mt-20">
-            <div className="flex flex-col sm:flex-row gap-3 p-2 bg-card rounded-xl shadow-xl">
-              <Input
-                type="text"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="flex-1 h-14 text-lg border-0 focus-visible:ring-0 placeholder:text-muted-foreground/60"
-                disabled={isLoading}
-              />
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 h-14 text-lg border-0 focus-visible:ring-0 placeholder:text-muted-foreground/60"
-                disabled={isLoading}
-              />
-              <Button 
-                type="submit"
-                size="lg" 
-                className="h-14 px-8 text-lg font-semibold bg-gradient-sunset hover:opacity-90 transition-opacity"
-                disabled={isLoading}
-              >
-                <Mail className="mr-2 h-5 w-5" />
-                {isLoading ? "Subscribing..." : "Get Deals"}
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Join 5,000+ Atlanta travelers saving on flights. No spam, unsubscribe anytime.
+          {/* CTA Button */}
+          <div className="max-w-2xl mx-auto">
+            <Button 
+              asChild
+              size="lg" 
+              className="h-16 px-12 text-xl font-semibold bg-gradient-sunset hover:opacity-90 transition-opacity"
+            >
+              <Link to="/pricing">
+                <Mail className="mr-2 h-6 w-6" />
+                Start 7-Day Free Trial
+              </Link>
+            </Button>
+            <p className="text-sm text-muted-foreground mt-4">
+              $4.99/month or $39.99/year with booking guarantee. Cancel anytime.
             </p>
-          </form>
+          </div>
 
           {/* Trust Indicators */}
           <div className="flex flex-wrap items-center justify-center gap-8 pt-8 text-sm">

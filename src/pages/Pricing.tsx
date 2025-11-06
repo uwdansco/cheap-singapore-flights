@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SEO } from '@/components/SEO';
 
 const MONTHLY_PRICE_ID = 'price_1SQJu5Cm33gke1O8lp73P8iV'; // $4.99/month
-const ANNUAL_PRICE_ID = 'price_annual_3999'; // Placeholder - needs annual product creation
+const ANNUAL_PRICE_ID = 'price_1SQJvmCm33gke1O8QXGB4O3g'; // $39.99/year
 
 const Pricing = () => {
   const navigate = useNavigate();
