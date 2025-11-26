@@ -67,7 +67,7 @@ const Pricing = () => {
               Choose Your Plan
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Start your 7-day free trial. No credit card required during trial.
+              Start your 7-day free trial. Credit card required, but you won't be charged until after the trial.
             </p>
           </div>
 
@@ -192,7 +192,7 @@ const Pricing = () => {
                   <AccordionItem value="item-1">
                     <AccordionTrigger>What's included in the free trial?</AccordionTrigger>
                     <AccordionContent>
-                      Both plans include a 7-day free trial with full access to all features. You can track unlimited destinations, receive price alerts, and access historical data. No credit card is required to start the trial.
+                      Both plans include a 7-day free trial with full access to all features. You can track unlimited destinations, receive price alerts, and access historical data. A credit card is required to start your trial, but you won't be charged until after the 7-day trial period ends. Cancel anytime during the trial at no cost.
                     </AccordionContent>
                   </AccordionItem>
 
