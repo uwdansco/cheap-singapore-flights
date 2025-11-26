@@ -4,46 +4,63 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import Onboarding from "./pages/Onboarding";
-import Auth from "./pages/Auth";
-import Verify from "./pages/Verify";
-import CheckEmail from "./pages/CheckEmail";
-import Unsubscribe from "./pages/Unsubscribe";
-import Deals from "./pages/Deals";
-import DealDetails from "./pages/DealDetails";
-import NotFound from "./pages/NotFound";
-import { AdminLayout } from "./components/admin/AdminLayout";
-import DashboardOverview from "./pages/admin/DashboardOverview";
-import SubscribersPage from "./pages/admin/SubscribersPage";
-import DestinationsPage from "./pages/admin/DestinationsPage";
-import DealsPage from "./pages/admin/DealsPage";
-import SendEmailPage from "./pages/admin/SendEmailPage";
-import PriceMonitoring from "./pages/admin/PriceMonitoring";
-import AdminSettings from "./pages/admin/AdminSettings";
-import TestEmailAlerts from "./pages/admin/TestEmailAlerts";
-import TestEmail from "./pages/admin/TestEmail";
-import TestAlerts from "./pages/admin/TestAlerts";
-import { DashboardLayout } from "./components/dashboard/DashboardLayout";
-import MyDestinations from "./pages/dashboard/MyDestinations";
-import PriceAlerts from "./pages/dashboard/PriceAlerts";
-import AccountSettings from "./pages/dashboard/AccountSettings";
-import Destinations from "./pages/Destinations";
-import DestinationDetail from "./pages/DestinationDetail";
-import Blog from "./pages/Blog";
-import BlogPost from "./pages/BlogPost";
-import About from "./pages/About";
-import HowItWorksPage from "./pages/HowItWorksPage";
-import Pricing from "./pages/Pricing";
-import BookingGuarantee from "./pages/dashboard/BookingGuarantee";
-import GuaranteeClaims from "./pages/admin/GuaranteeClaims";
+
+// Lazy load pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Verify = lazy(() => import("./pages/Verify"));
+const CheckEmail = lazy(() => import("./pages/CheckEmail"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const Deals = lazy(() => import("./pages/Deals"));
+const DealDetails = lazy(() => import("./pages/DealDetails"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Destinations = lazy(() => import("./pages/Destinations"));
+const DestinationDetail = lazy(() => import("./pages/DestinationDetail"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
+const About = lazy(() => import("./pages/About"));
+const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+
+// Admin pages
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
+const DashboardOverview = lazy(() => import("./pages/admin/DashboardOverview"));
+const SubscribersPage = lazy(() => import("./pages/admin/SubscribersPage"));
+const DestinationsPage = lazy(() => import("./pages/admin/DestinationsPage"));
+const DealsPage = lazy(() => import("./pages/admin/DealsPage"));
+const SendEmailPage = lazy(() => import("./pages/admin/SendEmailPage"));
+const PriceMonitoring = lazy(() => import("./pages/admin/PriceMonitoring"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const TestEmailAlerts = lazy(() => import("./pages/admin/TestEmailAlerts"));
+const TestEmail = lazy(() => import("./pages/admin/TestEmail"));
+const TestAlerts = lazy(() => import("./pages/admin/TestAlerts"));
+const GuaranteeClaims = lazy(() => import("./pages/admin/GuaranteeClaims"));
+
+// Dashboard pages
+const DashboardLayout = lazy(() => import("./components/dashboard/DashboardLayout").then(m => ({ default: m.DashboardLayout })));
+const MyDestinations = lazy(() => import("./pages/dashboard/MyDestinations"));
+const PriceAlerts = lazy(() => import("./pages/dashboard/PriceAlerts"));
+const AccountSettings = lazy(() => import("./pages/dashboard/AccountSettings"));
+const BookingGuarantee = lazy(() => import("./pages/dashboard/BookingGuarantee"));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -58,7 +75,8 @@ const App = () => (
             <OfflineBanner />
             <InstallPrompt />
             <BrowserRouter>
-            <Routes>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/destinations" element={<Destinations />} />
@@ -121,6 +139,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </BrowserRouter>
           </ErrorBoundary>
         </TooltipProvider>
