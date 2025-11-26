@@ -15,15 +15,12 @@ interface OnboardingDestinationsProps {
   onBack: () => void;
 }
 
-const REGION_FILTERS = ['All', 'Europe', 'Asia', 'Caribbean', 'South America', 'Africa', 'Middle East', 'Oceania', 'Central America', 'North America'];
-
 export const OnboardingDestinations = ({ selectedDestinations, onNext, onBack }: OnboardingDestinationsProps) => {
   const { toast } = useToast();
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [filteredDestinations, setFilteredDestinations] = useState<Destination[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set(selectedDestinations.map(d => d.id)));
   const [searchQuery, setSearchQuery] = useState('');
-  const [regionFilter, setRegionFilter] = useState('All');
   const [loading, setLoading] = useState(true);
 
   const MAX_SELECTIONS = 10;
@@ -81,12 +78,8 @@ export const OnboardingDestinations = ({ selectedDestinations, onNext, onBack }:
       );
     }
 
-    if (regionFilter !== 'All') {
-      filtered = filtered.filter(dest => dest.region === regionFilter);
-    }
-
     setFilteredDestinations(filtered);
-  }, [searchQuery, regionFilter, destinations]);
+  }, [searchQuery, destinations]);
 
   const toggleSelection = (dest: Destination) => {
     const newSelected = new Set(selected);
@@ -140,30 +133,15 @@ export const OnboardingDestinations = ({ selectedDestinations, onNext, onBack }:
           </CardHeader>
           
           <CardContent className="space-y-6">
-            {/* Filters */}
-            <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search destinations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                {REGION_FILTERS.map(region => (
-                  <Badge
-                    key={region}
-                    variant={regionFilter === region ? 'default' : 'outline'}
-                    className="cursor-pointer"
-                    onClick={() => setRegionFilter(region)}
-                  >
-                    {region}
-                  </Badge>
-                ))}
-              </div>
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search destinations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
             {/* Selection Counter */}
