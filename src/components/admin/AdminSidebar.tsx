@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
@@ -12,14 +12,25 @@ import {
   TestTube2,
   FlaskConical,
   Shield,
-  Zap
+  Zap,
+  User,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const menuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard, end: true },
@@ -38,6 +49,7 @@ const menuItems = [
 export function AdminSidebar() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   const handleSignOut = async () => {
@@ -47,6 +59,11 @@ export function AdminSidebar() {
       description: "You have been signed out successfully.",
     });
     navigate("/");
+  };
+
+  const getUserInitials = () => {
+    if (!user?.email) return 'A';
+    return user.email.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -102,17 +119,79 @@ export function AdminSidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
-        <Button
-          variant="ghost"
-          onClick={handleSignOut}
-          className={cn(
-            "w-full justify-start",
-            collapsed && "justify-center px-0"
-          )}
-        >
-          <LogOut className="h-5 w-5" />
-          {!collapsed && <span className="ml-3">Sign Out</span>}
-        </Button>
+        {collapsed ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="w-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="" alt={user?.email || 'Admin'} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium truncate">
+                    {user?.email?.split('@')[0] || 'Admin'}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {user?.email || ''}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sign Out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 px-2 h-auto py-2"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="" alt={user?.email || 'Admin'} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start text-left flex-1 min-w-0">
+                  <span className="text-sm font-medium truncate w-full">
+                    {user?.email?.split('@')[0] || 'Admin'}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate w-full">
+                    {user?.email || ''}
+                  </span>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Admin Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sign Out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </aside>
   );
