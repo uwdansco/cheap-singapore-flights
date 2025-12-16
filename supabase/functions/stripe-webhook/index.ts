@@ -12,6 +12,10 @@ const supabaseAdmin = createClient(
 );
 
 serve(async (req) => {
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+
   const signature = req.headers.get("stripe-signature");
   
   if (!signature) {
@@ -19,15 +23,15 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.text();
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    
-    let event;
-    if (webhookSecret) {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } else {
-      event = JSON.parse(body);
+    if (!webhookSecret) {
+      // Refuse to process unsigned webhooks (prevents spoofed events in misconfigured envs).
+      return new Response("STRIPE_WEBHOOK_SECRET not configured", { status: 500 });
     }
+
+    const body = await req.text();
+    
+    const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
 
     console.log("Webhook event:", event.type);
 

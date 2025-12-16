@@ -72,7 +72,7 @@ Using Resend's default domain: `onboarding@resend.dev`
    Go to Lovable Cloud → Secrets and add:
    ```
    SECRET_NAME: EMAIL_FROM
-   VALUE: Cheap Atlanta Flights <deals@updates.yourdomain.com>
+   VALUE: Cheap Singapore Flights <deals@updates.yourdomain.com>
    ```
 
 5. **Test**

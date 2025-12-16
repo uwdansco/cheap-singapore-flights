@@ -1,4 +1,4 @@
-# Deployment Guide - Cheap Atlanta Flights
+# Deployment Guide - Cheap Singapore Flights
 
 Complete deployment checklist and post-launch monitoring plan.
 
@@ -42,11 +42,11 @@ Complete deployment checklist and post-launch monitoring plan.
 - [ ] Cron jobs configured
 
 ### DNS & Domain
-- [ ] Domain purchased: cheapatlantaflights.com
+- [ ] Domain purchased: yourdomain.com
 - [ ] A record configured
 - [ ] CNAME for www subdomain
 - [ ] SSL certificate active (auto via Vercel/Lovable)
-- [ ] Email domain configured: emails.cheapatlantaflights.com
+- [ ] Email domain configured: emails.yourdomain.com
 - [ ] SPF record added
 - [ ] DKIM configured in Resend
 - [ ] DMARC policy set
@@ -289,7 +289,7 @@ After Week 1, document:
 ## 📞 Support Plan
 
 ### Support Channels
-1. Email: support@cheapatlantaflights.com (response time: 24h)
+1. Email: support@yourdomain.com (response time: 24h)
 2. Discord community (optional)
 3. In-app help center (future)
 
