@@ -74,7 +74,7 @@ export const WelcomeEmail = ({
             </p>
 
             <div style={buttonContainer}>
-              <a style={button} href="https://cheapatlantaflights.com/deals">
+              <a style={button} href="https://yourdomain.com/deals">
                 Browse Current Deals
               </a>
             </div>
@@ -103,7 +103,7 @@ export const WelcomeEmail = ({
               <a href={unsubscribeUrl} style={footerLink}>
                 Unsubscribe
               </a> • 
-              <a href="mailto:support@cheapatlantaflights.com" style={footerLink}>
+              <a href="mailto:support@yourdomain.com" style={footerLink}>
                 {' '}Contact Us
               </a>
             </p>

@@ -17,7 +17,7 @@ export const OrganizationSchema = ({ name, url, logo, description }: Organizatio
     description,
     contactPoint: {
       "@type": "ContactPoint",
-      email: "support@cheapatlantaflights.com",
+      email: "support@yourdomain.com",
       contactType: "Customer Service",
     },
   };

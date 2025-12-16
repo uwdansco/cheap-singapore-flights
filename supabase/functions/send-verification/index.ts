@@ -83,7 +83,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get site URL from environment or use default
-    const siteUrl = Deno.env.get("SITE_URL") || "https://cheapatlantaflights.com";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://yourapp.lovable.app";
     const verificationUrl = `${siteUrl}/verify?token=${verificationToken}`;
     const unsubscribeUrl = `${siteUrl}/unsubscribe`;
 
@@ -97,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Send verification email
-    const emailFrom = Deno.env.get("EMAIL_FROM") || "Cheap Singapore Flights <noreply@cheapatlantaflights.online>";
+    const emailFrom = Deno.env.get("EMAIL_FROM") || "Cheap Singapore Flights <onboarding@resend.dev>";
     const emailResponse = await resend.emails.send({
       from: emailFrom,
       to: [email],

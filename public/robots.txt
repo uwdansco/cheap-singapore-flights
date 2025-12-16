@@ -16,4 +16,4 @@ Disallow: /dashboard
 Disallow: /admin
 Disallow: /api
 
-Sitemap: https://cheapatlantaflights.com/sitemap.xml
+Sitemap: https://yourdomain.com/sitemap.xml

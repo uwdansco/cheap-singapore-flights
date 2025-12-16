@@ -51,7 +51,7 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .single();
 
-    const siteUrl = Deno.env.get("SITE_URL") || "https://cheapatlantaflights.com";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://yourapp.lovable.app";
     const unsubscribeUrl = `${siteUrl}/unsubscribe`;
 
     let dealData = undefined;
@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Send welcome email
-    const emailFrom = Deno.env.get("EMAIL_FROM") || "Cheap Singapore Flights <noreply@cheapatlantaflights.online>";
+    const emailFrom = Deno.env.get("EMAIL_FROM") || "Cheap Singapore Flights <onboarding@resend.dev>";
     const emailResponse = await resend.emails.send({
       from: emailFrom,
       to: [email],
