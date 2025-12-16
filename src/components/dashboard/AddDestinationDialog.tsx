@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +47,7 @@ export const AddDestinationDialog = ({
   const [threshold, setThreshold] = useState(500);
   const [loading, setLoading] = useState(false);
   const [loadingAI, setLoadingAI] = useState(false);
+  const latestSuggestionRequestId = useRef(0);
   const [aiRecommendation, setAiRecommendation] = useState<{
     threshold: number;
     reasoning: string;
@@ -64,12 +65,18 @@ export const AddDestinationDialog = ({
 
   // Auto-suggest threshold when user types new destination
   useEffect(() => {
-    const getSuggestion = async () => {
-      if (!newCity.trim() || !newCountry.trim()) {
-        setAiRecommendation(null);
-        return;
-      }
+    // If required fields are missing, invalidate any in-flight request and reset state.
+    if (!newCity.trim() || !newCountry.trim()) {
+      latestSuggestionRequestId.current += 1;
+      setAiRecommendation(null);
+      setLoadingAI(false);
+      return;
+    }
 
+    const requestId = ++latestSuggestionRequestId.current;
+    let cancelled = false;
+
+    const getSuggestion = async () => {
       setLoadingAI(true);
       try {
         const { data, error } = await supabase.functions.invoke('suggest-threshold', {
@@ -81,6 +88,7 @@ export const AddDestinationDialog = ({
         });
 
         if (error) throw error;
+        if (cancelled || requestId !== latestSuggestionRequestId.current) return;
 
         if (data && data.recommended_threshold) {
           setAiRecommendation({
@@ -100,14 +108,21 @@ export const AddDestinationDialog = ({
         }
       } catch (error: any) {
         console.error('Error getting AI suggestion:', error);
-        setAiRecommendation(null);
+        if (!cancelled && requestId === latestSuggestionRequestId.current) {
+          setAiRecommendation(null);
+        }
       } finally {
-        setLoadingAI(false);
+        if (!cancelled && requestId === latestSuggestionRequestId.current) {
+          setLoadingAI(false);
+        }
       }
     };
 
     const timeoutId = setTimeout(getSuggestion, 1000);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [newCity, newCountry, newAirportCode]);
 
   const handleAddNewDestination = async () => {

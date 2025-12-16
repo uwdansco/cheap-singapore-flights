@@ -24,8 +24,9 @@ export default function BlogPost() {
     );
   }
 
-  const shareUrl = window.location.href;
-  const shareTitle = post.title;
+  const shareUrl = encodeURIComponent(window.location.href);
+  const shareTitle = encodeURIComponent(post.title);
+  const shareMailto = `mailto:?subject=${shareTitle}&body=${shareUrl}`;
 
   return (
     <>
@@ -103,7 +104,7 @@ export default function BlogPost() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.location.href = `mailto:?subject=${shareTitle}&body=${shareUrl}`}
+                  onClick={() => (window.location.href = shareMailto)}
                 >
                   <Mail className="h-4 w-4" />
                 </Button>
@@ -117,8 +118,8 @@ export default function BlogPost() {
             />
 
             {/* Content */}
-            <div className="prose prose-lg max-w-none mb-12">
-              <div dangerouslySetInnerHTML={{ __html: post.content.replace(/\n/g, "<br />") }} />
+            <div className="prose prose-lg max-w-none mb-12 whitespace-pre-wrap break-words">
+              {post.content}
             </div>
 
             {/* Tags */}
